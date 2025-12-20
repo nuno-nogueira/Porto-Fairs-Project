@@ -1,19 +1,34 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+// Imports
+import React, { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ImageSourcePropType } from 'react-native';
 
+// Item Definitions
 interface FairItem {id: number, title: string; schedule: string; address: string}
-
+type TransportMode = "driving" | "walking" | "transit";
+interface RouteData {
+    driving?: { distance: string; duration: string; arrivalTime: string};
+    walking?: { distance: string, duration: string};
+    transit?: { distance: string, duration: string};
+}
+interface DisplayedRouteData {
+    distance: string;
+    duration: string;
+    arrivalTime: string;
+}
 interface StartRouteProps {
     fair: FairItem;
-    onBeginRoute: () => void
+    onBeginRoute: () => void;
+    routeInfo: RouteData | null;
+    selectedMode: TransportMode;
+    onModeChange: (mode: TransportMode) => void;
 }
-
 interface RoutePointsProps {
     title: string;
     address: string;
     isOrigin: boolean;
 }
 
+// Route Marker Definition
 const RoutePoint = ({ title, address, isOrigin}: RoutePointsProps) => {
     return (
         <View>
@@ -23,9 +38,27 @@ const RoutePoint = ({ title, address, isOrigin}: RoutePointsProps) => {
     )
 }
 
-export default function StartRoute({ fair, onBeginRoute }: StartRouteProps) {
+export default function StartRoute({ fair, onBeginRoute, routeInfo, selectedMode, onModeChange }: StartRouteProps) {
+    // Use Sate for default marker order
     const [isDefaultOrder, setIsDefaultOrder] = useState(true);
 
+    // Get duration & distance with Google Maps API
+    const displayedRoute: DisplayedRouteData = useMemo(() => {
+        const data = routeInfo?.[selectedMode];
+
+        const distance = data?.distance || '...';
+        const duration = data?.duration || '...';
+
+        const arrivalTime = (data && 'arrivalTime' in data) ? data.arrivalTime : 'N/A';
+        return { distance, duration, arrivalTime}
+    }, [selectedMode, routeInfo])
+
+    // Get duration for driving, walking & transit mode
+    const drivingDuration = routeInfo?.driving?.duration || '...';
+    const walkingDuration = routeInfo?.walking?.duration || '...';
+    const transitDuration = routeInfo?.transit?.duration || '...';
+
+    // Origin & Destination Points
     const originPoint = {
         title: 'A tua localização',
         address: 'Localização Atual',
@@ -38,37 +71,68 @@ export default function StartRoute({ fair, onBeginRoute }: StartRouteProps) {
         isOrigin: false
     }
 
+    // Define first & second points based on the point coordinates
     const firstPoint = isDefaultOrder ? originPoint : destinationPoint;
     const secondPoint = isDefaultOrder ? destinationPoint : originPoint;
 
+    // Swap origin & destination points
     const handleSwap = () => {
         setIsDefaultOrder(prev => !prev)
     }
 
+    // Render transport mode buttons
+    const renderTransportButton = (mode: TransportMode, icon: ImageSourcePropType, duration: string) => (
+        <TouchableOpacity
+        style={[
+            styles.distanceSection,
+            selectedMode === mode && styles.selectedMode
+        ]}
+        onPress={() => onModeChange(mode)}
+        activeOpacity={0.7}
+        >
+            <Image
+                source={icon}
+                style={[
+                    styles.iconStyle,
+                    selectedMode === mode && styles.iconActive 
+                ]}
+            />
+            <Text
+                style={[
+                    styles.durationText,
+                    selectedMode === mode && styles.durationActiveText
+                ]}
+            >
+                {duration}
+            </Text>
+        </TouchableOpacity>
+    )
+
     return (
         <View style={styles.container}>
-            <View style={styles.distanceInfo}>
-                <View style={styles.distanceSection}>
-                    <Image source={require('../../assets/map-icons/walk-icon.png')} />
-                    <Text style={{color: '#7A716E'}}> 15 min</Text>
+            <View style={styles.transportContainer}>
+                <View style={styles.distanceInfo}>
+                    {renderTransportButton('walking', require('../../assets/map-icons/walk-icon.png'), walkingDuration)}
+                    {renderTransportButton('driving', require('../../assets/map-icons/car-icon.png'), drivingDuration)}
+                    {renderTransportButton('transit', require('../../assets/map-icons/bus-icon.png'), transitDuration)}
                 </View>
-                <View style={styles.distanceSection}>
-                    <Image source={require('../../assets/map-icons/car-icon.png')} />
-                    <Text style={{color: '#7A716E'}}> 15 min</Text>
-                </View>
-                <View style={styles.distanceSection}>
-                    <Image source={require('../../assets/map-icons/bus-icon.png')} />
-                    <Text style={{color: '#7A716E'}}> 30 min</Text>
+                <View style={styles.line}>
+                    {selectedMode === 'walking' && <View style={[styles.activeLineBase, styles.activeLineWalking]} />}
+                    {selectedMode === 'driving' && <View style={[styles.activeLineBase, styles.activeLineDriving]} />}
+                    {selectedMode === 'transit' && <View style={[styles.activeLineBase, styles.activeLineTransit]} />}
                 </View>
             </View>
-            <View style={styles.line}></View>
+            
             <View>
                 <Text style={styles.title}>{fair.title}</Text>
                 <View style={styles.details}>
                     <Image source={require('../../assets/map-icons/distance-icon.png')} />
-                    <Text style={{color: '#7A716E'}}>1.22 Km</Text>
-                    <View style={{width: 5, height: 5, borderRadius: 50, backgroundColor: '#C64F23'}}></View>
-                    <Text style={{color: '#7A716E'}}>1h:30 min</Text>
+                    <Text style={{color: '#7A716E'}}>{displayedRoute.distance}</Text>
+                    {displayedRoute.distance !== '...' && (
+                        <View style={styles.detailSeparator}></View>
+                    )}
+                    
+                    <Text>{displayedRoute.arrivalTime}</Text>
                 </View>
             </View>
 
@@ -129,18 +193,35 @@ const styles = StyleSheet.create({
     distanceInfo: {
         flexDirection: 'row',
         columnGap: 40,
-        alignSelf: 'center',
-        marginTop: 20
+        marginBottom: 10
     },
     distanceSection: {
-        flexDirection: 'row'
+        flexDirection: 'row',
+        alignItems: 'center'
+    },
+    selectedMode: {
+        backgroundColor: '#FAE8E1'
+    },
+    iconStyle: {
+        tintColor: '#7A716E',
+    },
+    iconActive: {
+        tintColor: '#C64F23', 
+    },
+    durationText: {
+        color: '#7A716E',
+        marginLeft: 5,
+        fontWeight: '500',
+    },
+    durationActiveText: {
+        color: '#C64F23',
+        fontWeight: 'bold',
     },
     line: {
         width: 300,
         height: 2,
         backgroundColor: 'rgba(250, 182, 171, 0.5)',
-        alignSelf: 'center',
-        marginTop: 15
+        position: 'relative'
     },
     title: {
         fontSize: 22,
@@ -155,7 +236,12 @@ const styles = StyleSheet.create({
         marginTop: 15,
         columnGap: 5
     },
-
+    detailSeparator: {
+        width: 5, 
+        height: 5, 
+        borderRadius: 50, 
+        backgroundColor: '#C64F23'
+    },
     routeHeader: {
         flexDirection: 'row',
         paddingRight: 10,
@@ -222,5 +308,31 @@ const styles = StyleSheet.create({
         borderTopRightRadius: 6,
         borderBottomLeftRadius: 6,
         borderBottomRightRadius: 6,
-    }
+    },
+
+    transportContainer: { 
+        alignSelf: 'center',
+        width: 300, 
+        marginTop: 20
+    },
+
+    activeLineBase: { 
+        height: 2,
+        backgroundColor: '#C64F23', 
+        position: 'absolute',
+        bottom: 0,
+    },
+
+    activeLineWalking: {
+        width: 80,
+        marginLeft: 0,
+    },
+    activeLineDriving: {
+        width: 130,
+        marginLeft: 80
+    },
+    activeLineTransit: {
+        width: 90,
+        marginLeft: 210, 
+    },
 });

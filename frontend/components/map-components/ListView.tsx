@@ -1,19 +1,21 @@
+// Imports
 import React from 'react';
 import { Text, View, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { BottomSheetFlatList } from '@gorhom/bottom-sheet';
 
-type ItemProps = {id: number, title: string; schedule: string; address: string, onPress: (item: FairItem) => void}
-interface FairItem {id: number, title: string; schedule: string; address: string}
-
+// Item Definitions
+type ItemProps = {id: number, title: string; schedule: string; address: string, latitude: number, longitude: number, onPress: (item: FairItem) => void}
+interface FairItem {id: number, title: string; schedule: string; address: string, latitude: number, longitude: number}
 interface MapListViewProps {
     data: FairItem[];
     onSelect: (item: FairItem) => void;
 }
 
-const Item = ({id, title, schedule, address, onPress}: ItemProps) => (
+const Item = ({id, title, schedule, address, latitude, longitude, onPress}: ItemProps) => (
   <TouchableOpacity 
+  // Fair Card Info
   style={styles.card}
-  onPress={() => onPress({ id, title, schedule, address })}>
+  onPress={() => onPress({ id, title, schedule, address, latitude, longitude })}>
     <View>
         <Image
             source={require('../../assets/images/fair-default-image.png')}
@@ -38,12 +40,15 @@ export default function MapListView({ data, onSelect }: MapListViewProps) {
   return (
         <BottomSheetFlatList<FairItem>
         data = {data}
+        // Iterate through each fair to render the cards
         renderItem={({item}: {item: FairItem}) => 
         <Item 
             id={item.id}
             title={item.title} 
             schedule={item.schedule} 
             address={item.address}
+            latitude={item.latitude}
+            longitude={item.longitude}
             onPress={onSelect}    
         />}
         horizontal={true}

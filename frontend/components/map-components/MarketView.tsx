@@ -1,17 +1,21 @@
+// Imports
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 
+// Item Definitions
 interface FairItem {id: number, title: string; schedule: string; address: string}
-
 interface FairDetailsProps {
     fair: FairItem;
     onBack: () => void;
     onStartRoute: () => void;
+    routeInfo: {driving?: { distance: string; duration: string; arrivalTime: string}} | null;
 }
 
-export default function FairDetails({ fair, onBack, onStartRoute }: FairDetailsProps) {
+// Fair Details Definition
+export default function FairDetails({ fair, onBack, onStartRoute, routeInfo }: FairDetailsProps) {
     // Heart Icon state
     const [isFavorite, setIsFavorite] = useState(false);
+    const distanceDisplay = routeInfo?.driving?.distance || 'A calcular...'
 
     // Change state
     const handleFavorite = () => {
@@ -25,12 +29,14 @@ export default function FairDetails({ fair, onBack, onStartRoute }: FairDetailsP
     ? require('../../assets/map-icons/favorite-icon.png')
     : require('../../assets/map-icons/favorite-outlined-icon.png')
 
+    // If no fair was selected or some error shows up
     if (!fair) return <View><Text>Nenhum detalhe selecionado.</Text></View>
 
     return (
         <View style={styles.container}>
             <View>
                 <Image
+                    // Fair Default Image
                     source={require('../../assets/images/fair-default-image.png')}
                     style={styles.image}
                 />
@@ -46,7 +52,7 @@ export default function FairDetails({ fair, onBack, onStartRoute }: FairDetailsP
                         <View style={styles.infoSection}>
                             <Image source={require('../../assets/map-icons/distance-icon.png')}
                         />
-                            <Text style={{fontSize: 12, color: '#7A716E'}}>1.22 Km</Text>
+                            <Text style={{fontSize: 12, color: '#7A716E'}}>{distanceDisplay}</Text>
                         </View>
                         <View style={styles.infoSection}>
                             <Image source={require('../../assets/map-icons/schedule-icon.png')}/>
@@ -87,7 +93,7 @@ const styles = StyleSheet.create({
         marginTop: 20
     },
     title: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: 'bold',
         marginBottom: 8,
     },
