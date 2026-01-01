@@ -1,6 +1,8 @@
 import React from "react";
-import { View, Text, Image, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Image, StyleSheet, TouchableOpacity, useColorScheme } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { ThemedText } from "@/components/themed-text";
+import { Colors } from "@/constants/theme";
 
 export interface MarketItemData {
   id: number;
@@ -9,42 +11,49 @@ export interface MarketItemData {
   address: string;
   image: string;
 }
+
 interface MarketCardProps {
   item: MarketItemData;
   onPress?: (item: MarketItemData) => void;
 }
 
 export function MarketCard({ item, onPress }: MarketCardProps) {
+  const theme = useColorScheme() ?? 'light';
+  const tintColor = Colors[theme].tint;
+  const cardBackgroundColor = theme === 'light' ? '#fff' : 'rgba(29, 37, 49, 0.61)';
+
   return (
     <TouchableOpacity
-      style={styles.cardContainer}
+      style={[styles.cardContainer, { backgroundColor: cardBackgroundColor }]}
       activeOpacity={0.8}
       onPress={() => onPress && onPress(item)}
     >
       <Image source={{ uri: item.image }} style={styles.cardImage} />
       <View style={styles.cardInfo}>
-        <Text style={styles.cardTitle} numberOfLines={1}>
+        <ThemedText type="defaultSemiBold" numberOfLines={1} style={styles.cardTitle}>
           {item.title}
-        </Text>
-        <Text style={styles.cardSchedule}>{item.schedule}</Text>
+        </ThemedText>
+        
+        <ThemedText type="small" style={{ color: tintColor, fontWeight: '600', marginBottom: 4 }}>
+          {item.schedule}
+        </ThemedText>
+        
         <View style={styles.addressRow}>
           <Ionicons name="location-sharp" size={12} color="gray" />
-          <Text style={styles.cardAddress} numberOfLines={1}>
+          <ThemedText type="small" lightColor="#666" darkColor="#ccc" numberOfLines={1} style={styles.cardAddress}>
             {item.address}
-          </Text>
+          </ThemedText>
         </View>
       </View>
     </TouchableOpacity>
   );
 }
 
-// Styles
 const styles = StyleSheet.create({
   cardContainer: {
-    width: 200, // Largura fixa do cartão
+    width: 200,
     marginRight: 15,
     borderRadius: 12,
-    backgroundColor: "#fff",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -63,15 +72,6 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   cardTitle: {
-    fontWeight: "bold",
-    fontSize: 15,
-    color: "#000000",
-    marginBottom: 4,
-  },
-  cardSchedule: {
-    fontSize: 12,
-    color: "#C64F23",
-    fontWeight: "600",
     marginBottom: 4,
   },
   addressRow: {
@@ -79,8 +79,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   cardAddress: {
-    fontSize: 11,
-    color: "#666",
     marginLeft: 2,
+    flex: 1, 
   },
 });
