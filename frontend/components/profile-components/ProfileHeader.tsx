@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Image, StyleSheet, useColorScheme } from 'react-native';
+import { View, Image, StyleSheet, useColorScheme, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 // Import components theme
@@ -10,21 +10,34 @@ interface ProfileHeaderProps {
   user: {
     name: string;
     location: string;
-    avatar: string;
   };
+
+  imageUri: any; 
+  onEditImage: () => void; 
 }
 
-export function ProfileHeader({ user }: ProfileHeaderProps) {
+export function ProfileHeader({ user, imageUri, onEditImage }: ProfileHeaderProps) {
   const theme = useColorScheme() ?? 'light';
   const backgroundColor = Colors[theme].background;
   const iconColor = Colors[theme].icon;
-
+  const tintColor = Colors[theme].tint;
   return (
     <View style={styles.container}>     
-      <Image 
-        source={{ uri: user.avatar }} 
-        style={[styles.profileImage, { borderColor: backgroundColor }]} 
-      />
+      <View style={styles.imageContainer}>
+        <Image 
+          source={typeof imageUri === 'string' ? { uri: imageUri } : imageUri} 
+          style={[styles.profileImage, { borderColor: backgroundColor }]} 
+        />
+
+        {/* btn adit profile image */}
+        <TouchableOpacity 
+          style={[styles.editButton, { backgroundColor: tintColor , borderColor: backgroundColor }]} 
+          onPress={onEditImage}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="camera" size={20} color="#fff" />
+        </TouchableOpacity>
+      </View>
       
       <ThemedText type="title" style={styles.name}>
         {user.name}
@@ -71,5 +84,17 @@ const styles = StyleSheet.create({
     marginLeft: 4, 
     fontSize: 16 
     
+  },
+  imageContainer: {
+    position: 'relative',
+    marginBottom: 10,
+  },
+  editButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    padding: 8,
+    borderRadius: 20,
+    borderWidth: 2,
   },
 });

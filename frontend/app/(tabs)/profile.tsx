@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   ScrollView,
@@ -7,28 +7,88 @@ import {
   FlatList,
   useColorScheme,
   Image,
+  Modal,    
+  TextInput,  
+  Alert
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 
 // Import components
 import { ProfileHeader } from "@/components/profile-components/ProfileHeader";
 import { MarketCard } from "@/components/profile-components/MarketCard";
 import { SellerCard } from "@/components/profile-components/SellerCard";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
+import { AnnouncementCard } from "@/components/profile-components/AnnouncementCard";
 
 // Imports thematization
 import { Colors } from "@/constants/theme";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 
-import { MARKETS, SELLERS } from "@/constants/data";
+import { MARKETS, SELLERS, POSTS } from "@/constants/data";
 
 const currentUser = SELLERS[0];
 
 export default function ProfileScreen() {
-  const isSeller = false;
+  const isSeller = true;
   const colorScheme = useColorScheme() ?? "light";
-  const currentColors = Colors[colorScheme];
+  const brandColors = Colors[colorScheme];
+
+  //states
+  const [favoriteMarkets, setFavoriteMarkets] = useState(MARKETS);
+  const [profileImage, setProfileImage] = useState(currentUser.avatar);
+  const [announcements, setAnnouncements] = useState(POSTS);
+  const [modalVisible, setModalVisible] = useState(false); // control modal visibility
+  const [newPostText, setNewPostText] = useState("");      // add new post text
+
+  // Pick image from gallery
+  const handlePickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setProfileImage(result.assets[0].uri);
+    }
+  };
+  // Remove market from favorites
+  function RemoveMarketFromFav(id: number) {
+    setFavoriteMarkets((currentList) => currentList.filter((m) => m.id !== id));
+  }
+
+  // Create announcement
+  function createAnnouncement() {
+    if (newPostText.trim() === "") {
+      Alert.alert("Erro", "Escreve alguma coisa antes de publicar!");
+      return;
+    }
+
+    const newPost = {
+      id: Date.now(), // Gera um ID único baseado na hora
+      text: newPostText,
+      date: "Agora mesmo",
+    };
+
+    setAnnouncements([newPost, ...announcements]);
+    setNewPostText(""); // Limpa o texto
+    setModalVisible(false); // Fecha o modal
+  }
+
+  // 4. Apagar Anúncio
+  function deleteAnnouncement(id: number) {
+    Alert.alert("Apagar", "Tens a certeza que queres apagar este anúncio?", [
+      { text: "Cancelar", style: "cancel" },
+      { 
+        text: "Apagar", 
+        style: "destructive", 
+        onPress: () => setAnnouncements((prev) => prev.filter(p => p.id !== id)) 
+      }
+    ]);
+  }
 
   return (
     <ThemedView style={styles.container}>
@@ -37,7 +97,7 @@ export default function ProfileScreen() {
         <View
           style={[
             styles.headerSection,
-            { backgroundColor: currentColors.background },
+            { backgroundColor: brandColors.background },
           ]}
         >
           {/* Icon Settings */}
@@ -48,20 +108,24 @@ export default function ProfileScreen() {
             <Ionicons
               name="settings-sharp"
               size={26}
-              color={currentColors.tint}
+              color={brandColors.tint}
             />
           </TouchableOpacity>
 
           {/* Profile Component */}
-          <ProfileHeader user={currentUser} />
+          <ProfileHeader
+            user={currentUser}
+            imageUri={profileImage} // Passa a imagem do estado
+            onEditImage={handlePickImage} // Passa a função de escolher
+          />
 
-          {/* Button for sellers */}
+          {/* Button create an announcement */}
           {isSeller && (
             <View style={{ marginTop: 10 }}>
               <PrimaryButton
                 title="Criar Anúncio"
                 iconName="add-sharp"
-                onPress={() => console.log("Criar")}
+                onPress={() => setModalVisible(true)}
               />
             </View>
           )}
@@ -75,15 +139,23 @@ export default function ProfileScreen() {
 
           <FlatList
             horizontal
-            data={MARKETS}
+            data={favoriteMarkets}
             showsHorizontalScrollIndicator={false}
             keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => (
               <MarketCard
                 item={item}
                 onPress={(market) => console.log("Ver feira:", market.title)}
+                onRemove={RemoveMarketFromFav}
               />
             )}
+            ListEmptyComponent={
+              <ThemedText
+                style={{ marginLeft: 20, fontStyle: "italic", color: "gray" }}
+              >
+                Ainda não tens feiras favoritas.
+              </ThemedText>
+            }
             contentContainerStyle={{ paddingHorizontal: 20 }}
           />
         </View>
@@ -109,6 +181,27 @@ export default function ProfileScreen() {
           />
         </View>
 
+        {/* === ZONA DE ANÚNCIOS (Só Vendedores) === */}
+        {isSeller && (
+          <View style={styles.section}>
+             <ThemedText type="subtitle" style={styles.sectionTitle}>Os meus Anúncios</ThemedText>
+             
+             {announcements.map((post) => (
+                <AnnouncementCard 
+                  key={post.id}
+                  announce={post}
+                  onDelete={deleteAnnouncement}
+                />
+             ))}
+              {/*  placeholder */}  
+             {announcements.length === 0 && (
+               <ThemedText style={{ fontStyle: 'italic', color: 'gray' }}>
+                 Ainda não publicaste nada.
+               </ThemedText>
+             )}
+          </View>
+        )}
+
         {/* became a seller */}
         {!isSeller && (
           <View style={styles.becomeSellerContainer}>
@@ -122,8 +215,8 @@ export default function ProfileScreen() {
               Divulga os teus produtos e associa-te às feiras em que participas.
             </ThemedText>
 
-          <Image      
-              source={require("../../assets/markets/vegetables.png")} 
+            <Image
+              source={require("../../assets/markets/vegetables.png")}
               style={{ width: "100%", height: 120, marginBottom: 20 }}
               resizeMode="contain"
             />
@@ -134,22 +227,51 @@ export default function ProfileScreen() {
               style={{ width: "100%", marginBottom: 10 }}
             />
 
-            {/* <PrimaryButton 
-                    title="Ignorar" 
-                    onPress={() => console.log("Ignorar")}
-                    style={{ 
-                        width: '100%', 
-                        backgroundColor: currentColors.background, 
-                        borderColor: '#E0E0E0' 
-                    }}
-                    textColor={Colors[colorScheme].text}
-                /> */}
+
           </View>
         )}
+
+        
       </ScrollView>
+
+
+      {/* === MODAL  === */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: brandColors.background }]}>
+            <ThemedText type="subtitle" style={{ marginBottom: 15 }}>Novo Anúncio</ThemedText>
+            
+            <TextInput 
+              style={[styles.input, { color: brandColors.text, borderColor: brandColors.border }]}
+              placeholder="O que tens para vender hoje?"
+              placeholderTextColor="gray"
+              multiline
+              numberOfLines={4}
+              value={newPostText}
+              onChangeText={setNewPostText}
+            />
+
+            <View style={styles.modalButtons}>
+              {/* cancel btn */}
+
+               <PrimaryButton title="Cancelar" onPress={() => setModalVisible(false)} textColor={brandColors.text} style={{ marginRight: 15, backgroundColor: 'transparent', borderWidth: 1, borderColor: brandColors.border }} />
+
+              {/* publish button */}
+              <PrimaryButton title="Publicar" onPress={createAnnouncement} />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </ThemedView>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
@@ -199,4 +321,30 @@ const styles = StyleSheet.create({
     backgroundColor: "#f9f9f9",
     borderRadius: 10,
   },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)', 
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '90%',
+    padding: 20,
+    borderRadius: 15,
+    elevation: 5,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    textAlignVertical: 'top', 
+    marginBottom: 20,
+    minHeight: 100,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  }
 });

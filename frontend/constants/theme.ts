@@ -21,7 +21,9 @@ export const Colors = {
     primary: '#C05528',
     primaryDark: '#A04520',
     cardBackground: '#FFFFFF',
+    cardShadow: '#000',
     border: '#E0E0E0',
+  
   },
   dark: {
     text: '#ffff',
@@ -33,7 +35,8 @@ export const Colors = {
     //ui colors
     primary: '#C05528', 
     primaryDark: '#A04520',
-    cardBackground: '#1E1E1E',
+    cardBackground: 'rgba(29, 37, 49, 0.61)', 
+    cardShadow: '#fff',
     border: '#333333',
   },
 };

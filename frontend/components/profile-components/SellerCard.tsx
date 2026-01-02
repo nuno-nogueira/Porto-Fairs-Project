@@ -1,7 +1,7 @@
 import React from 'react';
 import { Image, StyleSheet, TouchableOpacity, useColorScheme } from 'react-native';
 
-// 1. Manter os imports de tema
+// theme imports
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 

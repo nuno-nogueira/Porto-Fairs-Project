@@ -1,5 +1,11 @@
 import React from "react";
-import { View, Image, StyleSheet, TouchableOpacity, useColorScheme } from "react-native";
+import {
+  View,
+  Image,
+  StyleSheet,
+  TouchableOpacity,
+  useColorScheme,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
@@ -9,18 +15,20 @@ export interface MarketItemData {
   title: string;
   schedule: string;
   address: string;
-  image: string;
+  image: any;
 }
 
 interface MarketCardProps {
   item: MarketItemData;
   onPress?: (item: MarketItemData) => void;
+  onRemove?: (id: number) => void;
 }
 
-export function MarketCard({ item, onPress }: MarketCardProps) {
-  const theme = useColorScheme() ?? 'light';
+export function MarketCard({ item, onPress, onRemove }: MarketCardProps) {
+  const theme = useColorScheme() ?? "light";
   const tintColor = Colors[theme].tint;
-  const cardBackgroundColor = theme === 'light' ? '#fff' : 'rgba(29, 37, 49, 0.61)';
+  const cardBackgroundColor =
+    theme === "light" ? "#fff" : "rgba(29, 37, 49, 0.61)";
 
   return (
     <TouchableOpacity
@@ -28,19 +36,41 @@ export function MarketCard({ item, onPress }: MarketCardProps) {
       activeOpacity={0.8}
       onPress={() => onPress && onPress(item)}
     >
-      <Image source={{ uri: item.image }} style={styles.cardImage} />
+      <View>
+        <Image source={item.image} style={styles.cardImage} />
+
+        <TouchableOpacity
+          style={styles.favoriteButton}
+          onPress={() => onRemove && onRemove(item.id)}
+        >
+          <Ionicons name="heart" size={20} color="#C05528" />
+        </TouchableOpacity>
+      </View>
       <View style={styles.cardInfo}>
-        <ThemedText type="defaultSemiBold" numberOfLines={1} style={styles.cardTitle}>
+        <ThemedText
+          type="defaultSemiBold"
+          numberOfLines={1}
+          style={styles.cardTitle}
+        >
           {item.title}
         </ThemedText>
-        
-        <ThemedText type="small" style={{ color: tintColor, fontWeight: '600', marginBottom: 4 }}>
+
+        <ThemedText
+          type="small"
+          style={{ color: tintColor, fontWeight: "600", marginBottom: 4 }}
+        >
           {item.schedule}
         </ThemedText>
-        
+
         <View style={styles.addressRow}>
           <Ionicons name="location-sharp" size={12} color="gray" />
-          <ThemedText type="small" lightColor="#666" darkColor="#ccc" numberOfLines={1} style={styles.cardAddress}>
+          <ThemedText
+            type="small"
+            lightColor="#666"
+            darkColor="#ccc"
+            numberOfLines={1}
+            style={styles.cardAddress}
+          >
             {item.address}
           </ThemedText>
         </View>
@@ -61,6 +91,15 @@ const styles = StyleSheet.create({
     elevation: 3,
     marginBottom: 10,
   },
+  favoriteButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(255,255,255,0.9)', 
+    borderRadius: 55,
+    padding: 6,
+    zIndex: 10, 
+  },
   cardImage: {
     width: "100%",
     height: 110,
@@ -80,6 +119,6 @@ const styles = StyleSheet.create({
   },
   cardAddress: {
     marginLeft: 2,
-    flex: 1, 
+    flex: 1,
   },
 });
