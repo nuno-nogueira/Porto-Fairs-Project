@@ -5,7 +5,19 @@
         "schedule": "Seg - Sex 11:00 - 19:00",
         "address": "R. Formosa 322, 4000-248 Porto",
         "latitude": 41.1496, 
-        "longitude": -8.6109
+        "longitude": -8.6109,
+        "category": "Alimentação",
+        "county": "Porto",
+        "people": [
+          {
+            "id": 1,
+            "name": "Joaquim"
+          },
+          {
+            "id": 2,
+            "name": "Josefina"
+          }
+        ]
     },
     {
         "id": 2,
@@ -13,7 +25,15 @@
         "schedule": "Todos os dias 10:00 - 00:00",
         "address": "Praça De Almeida Garrett, Porto 40",
         "latitude": 41.1579, 
-        "longitude": -8.6291
+        "longitude": -8.6291,
+        "category": "Alimentação",
+        "county": "Porto",
+        "people": [
+          {
+            "id": 2,
+            "name": "Josefina"
+          }
+        ]
     },
     {
       "id": 3,
@@ -21,7 +41,15 @@
       "schedule": "Sáb 08:00 - 13:00",
       "address": "Avenida 25 de Abril, 4200 Porto",
       "latitude": 41.1691,
-      "longitude": -8.5997
+      "longitude": -8.5997,
+      "category": "Vestuário",
+      "county": "Porto",
+      "people": [
+          {
+            "id": 1,
+            "name": "Joaquim"
+          }
+        ]
     },
     {
       "id": 4,
@@ -29,7 +57,19 @@
       "schedule": "Ter - Sáb 06:00 - 18:00",
       "address": "R. França Júnior, 4450-142",
       "latitude": 41.1780,
-      "longitude": -8.6881
+      "longitude": -8.6881,
+      "category": "Cultura",
+      "county": "Matosinhos",
+      "people": [
+          {
+            "id": 1,
+            "name": "Joaquim"
+          },
+          {
+            "id": 2,
+            "name": "Josefina"
+          }
+        ]
     },
     {
       "id": 5,
@@ -37,6 +77,18 @@
       "schedule": "Seg - Sab 08:00 - 13:00",
       "address": "Rua do Mercado, Vila Nova de Gaia",
       "latitude": 41.1343,
-      "longitude": -8.6251
+      "longitude": -8.6251,
+      "category": "Velharias",
+      "county": "Vila Nova de Gaia",
+      "people": [
+          {
+            "id": 1,
+            "name": "Joaquim"
+          },
+          {
+            "id": 2,
+            "name": "Josefina"
+          }
+        ]
     }
 ]
