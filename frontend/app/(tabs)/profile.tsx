@@ -7,10 +7,11 @@ import {
   FlatList,
   useColorScheme,
   Image,
-  Modal,    
-  TextInput,  
-  Alert
+  Modal,
+  TextInput,
+  Alert,
 } from "react-native";
+import { router } from 'expo-router'; 
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 
@@ -40,7 +41,7 @@ export default function ProfileScreen() {
   const [profileImage, setProfileImage] = useState(currentUser.avatar);
   const [announcements, setAnnouncements] = useState(POSTS);
   const [modalVisible, setModalVisible] = useState(false); // control modal visibility
-  const [newPostText, setNewPostText] = useState("");      // add new post text
+  const [newPostText, setNewPostText] = useState(""); // add new post text
 
   // Pick image from gallery
   const handlePickImage = async () => {
@@ -82,11 +83,12 @@ export default function ProfileScreen() {
   function deleteAnnouncement(id: number) {
     Alert.alert("Apagar", "Tens a certeza que queres apagar este anúncio?", [
       { text: "Cancelar", style: "cancel" },
-      { 
-        text: "Apagar", 
-        style: "destructive", 
-        onPress: () => setAnnouncements((prev) => prev.filter(p => p.id !== id)) 
-      }
+      {
+        text: "Apagar",
+        style: "destructive",
+        onPress: () =>
+          setAnnouncements((prev) => prev.filter((p) => p.id !== id)),
+      },
     ]);
   }
 
@@ -145,7 +147,10 @@ export default function ProfileScreen() {
             renderItem={({ item }) => (
               <MarketCard
                 item={item}
-                onPress={(market) => console.log("Ver feira:", market.title)}
+                onPress={(market) => {
+                  console.log("A navegar para a feira:", market.id);
+                  router.push(`/market/${market.id}`);
+                }}
                 onRemove={RemoveMarketFromFav}
               />
             )}
@@ -181,24 +186,26 @@ export default function ProfileScreen() {
           />
         </View>
 
-        {/* === ZONA DE ANÚNCIOS (Só Vendedores) === */}
+        {/* === announcements === */}
         {isSeller && (
           <View style={styles.section}>
-             <ThemedText type="subtitle" style={styles.sectionTitle}>Os meus Anúncios</ThemedText>
-             
-             {announcements.map((post) => (
-                <AnnouncementCard 
-                  key={post.id}
-                  announce={post}
-                  onDelete={deleteAnnouncement}
-                />
-             ))}
-              {/*  placeholder */}  
-             {announcements.length === 0 && (
-               <ThemedText style={{ fontStyle: 'italic', color: 'gray' }}>
-                 Ainda não publicaste nada.
-               </ThemedText>
-             )}
+            <ThemedText type="subtitle" style={styles.sectionTitle}>
+              Os meus Anúncios
+            </ThemedText>
+
+            {announcements.map((post) => (
+              <AnnouncementCard
+                key={post.id}
+                announce={post}
+                onDelete={deleteAnnouncement}
+              />
+            ))}
+            {/*  placeholder */}
+            {announcements.length === 0 && (
+              <ThemedText style={{ fontStyle: "italic", color: "gray" }}>
+                Ainda não publicaste nada.
+              </ThemedText>
+            )}
           </View>
         )}
 
@@ -226,14 +233,9 @@ export default function ProfileScreen() {
               onPress={() => console.log("Criar perfil")}
               style={{ width: "100%", marginBottom: 10 }}
             />
-
-
           </View>
         )}
-
-        
       </ScrollView>
-
 
       {/* === MODAL  === */}
       <Modal
@@ -243,11 +245,21 @@ export default function ProfileScreen() {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: brandColors.background }]}>
-            <ThemedText type="subtitle" style={{ marginBottom: 15 }}>Novo Anúncio</ThemedText>
-            
-            <TextInput 
-              style={[styles.input, { color: brandColors.text, borderColor: brandColors.border }]}
+          <View
+            style={[
+              styles.modalContent,
+              { backgroundColor: brandColors.background },
+            ]}
+          >
+            <ThemedText type="subtitle" style={{ marginBottom: 15 }}>
+              Novo Anúncio
+            </ThemedText>
+
+            <TextInput
+              style={[
+                styles.input,
+                { color: brandColors.text, borderColor: brandColors.border },
+              ]}
               placeholder="O que tens para vender hoje?"
               placeholderTextColor="gray"
               multiline
@@ -259,7 +271,17 @@ export default function ProfileScreen() {
             <View style={styles.modalButtons}>
               {/* cancel btn */}
 
-               <PrimaryButton title="Cancelar" onPress={() => setModalVisible(false)} textColor={brandColors.text} style={{ marginRight: 15, backgroundColor: 'transparent', borderWidth: 1, borderColor: brandColors.border }} />
+              <PrimaryButton
+                title="Cancelar"
+                onPress={() => setModalVisible(false)}
+                textColor={brandColors.text}
+                style={{
+                  marginRight: 15,
+                  backgroundColor: "transparent",
+                  borderWidth: 1,
+                  borderColor: brandColors.border,
+                }}
+              />
 
               {/* publish button */}
               <PrimaryButton title="Publicar" onPress={createAnnouncement} />
@@ -267,11 +289,9 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
-
     </ThemedView>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {
@@ -324,12 +344,12 @@ const styles = StyleSheet.create({
 
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)', 
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalContent: {
-    width: '90%',
+    width: "90%",
     padding: 20,
     borderRadius: 15,
     elevation: 5,
@@ -338,13 +358,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 8,
     padding: 10,
-    textAlignVertical: 'top', 
+    textAlignVertical: "top",
     marginBottom: 20,
     minHeight: 100,
   },
   modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  }
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+  },
 });

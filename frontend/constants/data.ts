@@ -35,7 +35,8 @@ export const MARKETS = [
         address: "R. Formosa 322, 4000-248 Porto",
         latitude: 41.1496, 
         longitude: -8.6109,
-        image: require("@/assets/markets/bolhao.jpeg")
+        image: require("@/assets/markets/bolhao.jpeg"),
+        description:"Uma das feiras mais tradicionais do Porto, conhecida pelos seus produtos frescos do mar e legumes da região. Ambiente familiar e acolhedor, perfeito para passeios de fim de semana e compras sustentáveis diretas do produtor."
     },
     {
         id: 2,
@@ -44,7 +45,8 @@ export const MARKETS = [
         address: "WOW - World of Wine, Gaia",
         latitude: 41.1375, 
         longitude: -8.6128,
-        image: require("@/assets/markets/bolhao.jpeg")
+        image: require("@/assets/markets/bolhao.jpeg"),
+        description:"Um mercado sazonal que celebra o espírito natalício com uma variedade de produtos artesanais, decorações festivas e iguarias típicas da época. Localizado no coração do WOW - World of Wine, este mercado é ideal para encontrar presentes únicos e desfrutar de atividades temáticas para toda a família."
     },
     {
         id: 3,
@@ -53,7 +55,8 @@ export const MARKETS = [
         address: "Praça De Almeida Garrett, Porto 40",
         latitude: 41.1579, 
         longitude: -8.6291,
-        image: require("@/assets/markets/bolhao.jpeg")
+        image: require("@/assets/markets/bolhao.jpeg"),
+        description:"Um mercado gastronómico que reúne o melhor da culinária local e internacional sob o mesmo teto. Com uma seleção curada de restaurantes, bares e quiosques, o Time Out Market é o destino perfeito para os amantes da boa comida que procuram uma experiência culinária diversificada e vibrante."
     }
 ];
 

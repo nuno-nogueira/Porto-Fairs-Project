@@ -41,7 +41,7 @@ export function MarketCard({ item, onPress, onRemove }: MarketCardProps) {
 
         <TouchableOpacity
           style={styles.favoriteButton}
-          onPress={() => onRemove && onRemove(item.id)}
+          onPress={() => onPress && onPress(item)}
         >
           <Ionicons name="heart" size={20} color="#C05528" />
         </TouchableOpacity>
@@ -92,13 +92,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   favoriteButton: {
-    position: 'absolute',
+    position: "absolute",
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(255,255,255,0.9)', 
+    backgroundColor: "rgba(255,255,255,0.9)",
     borderRadius: 55,
     padding: 6,
-    zIndex: 10, 
+    zIndex: 10,
   },
   cardImage: {
     width: "100%",
