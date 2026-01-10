@@ -6,14 +6,11 @@ import {createToken} from "../utils/jws"
 export const registerUser = async (req: Request, res: Response) => {
 
     try {
-        const {name, email, password, role} = req.body;
- 
-        let userRole: Role;
 
-        if (role == "seller") { 
-            userRole = role;
-        } else {
-            userRole = "consumer";
+        const {name, email, password} = req.body;
+
+        if (!name || !email || !password) {
+            return res.status(400).json({message: "All fields are required."});
         }
 
         const existingUser = await User.findOne({ email });
@@ -27,13 +24,13 @@ export const registerUser = async (req: Request, res: Response) => {
         const newUser = await User.create({
             name, 
             email, 
-            passwordHash, 
-            role: role
+            passwordHash
         })
-        
+
         return res.status(201).json({message: "User creates successfully.", newUser});
 
     } catch (error) {
+        console.error("RegisterUser:", error);
         return res.status(500).json({message: "Internal error.", error});
     }
 }
@@ -43,7 +40,6 @@ export const loginUser = async (req: Request, res: Response) => {
     try {
         
         const {email, password} = req.body;
-
         const user = await User.findOne({email});
 
         if (!user) {
@@ -70,6 +66,21 @@ export const loginUser = async (req: Request, res: Response) => {
     } catch (error) {
         return res.status(500).json({message: "Internal error.", error})
     }
+}
+
+export const getUser = async (req: Request, res: Response) => {
+
+    try {
+        
+        const user = await User.findById(req.user._id).select("-passwordHash");
+        return res.json(user);
+    
+    } catch (error) {
+    
+        return res.status(500).json({message:"Internal error."})
+    
+    }
+
 }
 
 export const getAllUsers = async (req: Request, res: Response) => {
