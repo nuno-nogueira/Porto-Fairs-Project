@@ -1,12 +1,37 @@
 import { Tabs } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Image, View } from 'react-native';
 import { HapticTab } from '@/components/haptic-tab';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import * as Notifications from 'expo-notifications';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+
+  useEffect(() => {
+    // Loop function to push notifications every 30 seconds
+    const setupLoop = async() => {
+      // Clears scheduled notifications
+      await Notifications.cancelAllScheduledNotificationsAsync();
+
+      // Schedules a repetitive notification
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "Notificação Teste! :)",
+          body: "Esta notificação repete-se a cada X segundos.",
+          sound: true,
+          priority: Notifications.AndroidNotificationPriority.MAX
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: 30,
+          repeats: true
+        },
+      });
+    };
+    setupLoop();
+  }, [])
 
   return (
     <Tabs
