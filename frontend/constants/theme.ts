@@ -5,25 +5,39 @@
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+const tintColorLight = '#C05528'; // O TEU LARANJA
+const tintColorDark = '#C05528';
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
+    text: '#333333',         
+    background: '#FFFFFF',  
+    tint: tintColorLight,      
+    icon: '#687076',          
     tabIconDefault: '#687076',
     tabIconSelected: tintColorLight,
+    
+    //ui colors
+    primary: '#C05528',
+    primaryDark: '#A04520',
+    cardBackground: '#FFFFFF',
+    cardShadow: '#000',
+    border: '#E0E0E0',
+  
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
+    text: '#ffff',
+    background: '#000814',
     tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
+    icon: '#fff',
+    tabIconDefault: '#fff',
     tabIconSelected: tintColorDark,
+    //ui colors
+    primary: '#C05528', 
+    primaryDark: '#A04520',
+    cardBackground: 'rgba(29, 37, 49, 0.61)', 
+    cardShadow: '#fff',
+    border: '#333333',
   },
 };
 
