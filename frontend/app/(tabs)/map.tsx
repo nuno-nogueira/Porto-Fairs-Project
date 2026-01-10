@@ -16,7 +16,7 @@ import { categoryIcons } from './categoryIcons';
 import categories from '../data/categories.json';
 
 // GOOGLE MAPS API KEY
-const GOOGLE_MAPS_APIKEY = 'AIzaSyBKIxxQyxvI-U933RiQgVOJQsTg8xiSWfM'
+const GOOGLE_MAPS_APIKEY = process.env.EXPO_PUBLIC_GOOGLE_APIKEY
 
 // User Location by default (center of Porto)
 const USER_LOCATION = {
@@ -42,51 +42,6 @@ interface FairItem {
 
 
 type ViewMode = 'list' | 'details' | 'route' | 'fullRoute';
-
-// Default fair & market locations
-// const data: FairItem[] = [
-//     {
-//         id: 1,
-//         title: 'Mercado do Bolhão',
-//         schedule: 'Seg - Sex 11:00 - 19:00',
-//         address: 'R. Formosa 322, 4000-248 Porto',
-//         latitude: 41.1496, 
-//         longitude: -8.6109
-//     },
-//     {
-//         id: 2,
-//         title: 'Time Out Market Porto',
-//         schedule: 'Todos os dias 10:00 - 00:00',
-//         address: 'Praça De Almeida Garrett, Porto 40',
-//         latitude: 41.1579, 
-//         longitude: -8.6291
-//     },
-//     {
-//       id: 3,
-//       title: 'Feira da Vandoma',
-//       schedule: 'Sáb 08:00 - 13:00',
-//       address: 'Avenida 25 de Abril, 4200 Porto',
-//       latitude: 41.1691,
-//       longitude: -8.5997
-//     },
-//     {
-//       id: 4,
-//       title: 'Mercado Municipal de Matosinhos',
-//       schedule: 'Ter - Sáb 06:00 - 18:00',
-//       address: 'R. França Júnior, 4450-142',
-//       latitude: 41.1780,
-//       longitude: -8.6881
-//     },
-//     {
-//       id: 5,
-//       title: 'Mercado Municipal de Gaia',
-//       schedule: 'Seg - Sab 08:00 - 13:00',
-//       address: 'Rua do Mercado, Vila Nova de Gaia',
-//       latitude: 41.1343,
-//       longitude: -8.6251
-//     }
-// ]
-
 
 const calculateArrivalTime = (durationMinutes: number) => {
   /**
@@ -221,6 +176,11 @@ export default function MapScreen() {
     setSelectedFair(null);
   }
 
+  // Handling Back to Details
+  const handleBackToDetails = () => {
+    setViewMode('details')
+  }
+
   // Handling Start Route Button
   const handleStartRoute = () => {
     setViewMode('route');
@@ -268,7 +228,7 @@ export default function MapScreen() {
     } else if (viewMode === 'details' && selectedFair) {
       return <FairDetails fair={selectedFair} routeInfo={routeData} onBack={handleBackToList} onStartRoute={handleStartRoute}/>
     } else if (viewMode === 'route' && selectedFair) {
-      return <StartRoute fair={selectedFair} routeInfo={routeData} onBeginRoute={handleRouteView} onModeChange={setActiveTransportMode} selectedMode={activeTransportMode} />
+      return <StartRoute fair={selectedFair} routeInfo={routeData} onBack={handleBackToDetails} onBeginRoute={handleRouteView} onModeChange={setActiveTransportMode} selectedMode={activeTransportMode} />
     } else if (viewMode === 'fullRoute' && selectedFair) {
       return <FullMap fair={selectedFair} routeInfo={routeData} onEndRoute={handleEndRoute} selectedMode={activeTransportMode} onModeChange={setActiveTransportMode} />
     }
@@ -350,7 +310,7 @@ export default function MapScreen() {
                   latitude: selectedFair.latitude,
                   longitude: selectedFair.longitude
                 }}
-                apikey={GOOGLE_MAPS_APIKEY}
+                apikey={GOOGLE_MAPS_APIKEY!}
                 // Route Display Style
                 strokeColor={activeTransportMode === 'driving' ? '#C64F23' : '#FFB800'}
                 strokeWidth={activeTransportMode === 'driving' ? 4 : 2}
@@ -381,7 +341,7 @@ export default function MapScreen() {
                   latitude: selectedFair.latitude,
                   longitude: selectedFair.longitude
                 }}
-                apikey={GOOGLE_MAPS_APIKEY}
+                apikey={GOOGLE_MAPS_APIKEY!}
                 strokeColor={activeTransportMode === 'walking' ? '#C64F23' : '#FFB800'}
                 strokeWidth={activeTransportMode === 'walking' ? 4 : 2}
                 mode='WALKING'
@@ -409,7 +369,7 @@ export default function MapScreen() {
                   latitude: selectedFair.latitude,
                   longitude: selectedFair.longitude
                 }}
-                apikey={GOOGLE_MAPS_APIKEY}
+                apikey={GOOGLE_MAPS_APIKEY!}
                 strokeColor={activeTransportMode === 'transit' ? '#C64F23' : '#FFB800'}
                 strokeWidth={activeTransportMode === 'transit' ? 4 : 2}
                 mode='TRANSIT'

@@ -9,7 +9,6 @@ import data from '../data/locations.json';
 import categories from '../data/categories.json';
 
 
-
 // Object Definitions
 interface Person {
   id: number;
@@ -21,6 +20,7 @@ interface FairItem {
   schedule: string;
   address: string;
   category: string;
+  iconKey: string;
   county: string;
   people: Person[];
 }
@@ -72,6 +72,7 @@ export default function HomepageScreen({ onSelect }: HomepageProps) {
             placeholder='Procura por nome, concelho...'
           />
         </View>
+        
         <View style={styles.categorySelection}>
           <FlatList
             horizontal
@@ -96,7 +97,7 @@ export default function HomepageScreen({ onSelect }: HomepageProps) {
           />
         </View>
         <View style={{flex: 1}}>
-          <FairList data= {filteredData} />
+          <FairList data= {filteredData} onSelect={onSelect} />
         </View>
       </ThemedView>
     </GestureHandlerRootView>
