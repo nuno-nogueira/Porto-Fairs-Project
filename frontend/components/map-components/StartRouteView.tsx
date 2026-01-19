@@ -1,6 +1,7 @@
 // Imports
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ImageSourcePropType } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 // Item Definitions
 interface FairItem {id: number, title: string; schedule: string; address: string}
@@ -18,6 +19,7 @@ interface DisplayedRouteData {
 interface StartRouteProps {
     fair: FairItem;
     onBeginRoute: () => void;
+    onBack: () => void;
     routeInfo: RouteData | null;
     selectedMode: TransportMode;
     onModeChange: (mode: TransportMode) => void;
@@ -38,7 +40,7 @@ const RoutePoint = ({ title, address, isOrigin}: RoutePointsProps) => {
     )
 }
 
-export default function StartRoute({ fair, onBeginRoute, routeInfo, selectedMode, onModeChange }: StartRouteProps) {
+export default function StartRoute({ fair, onBeginRoute, onBack, routeInfo, selectedMode, onModeChange }: StartRouteProps) {
     // Use Sate for default marker order
     const [isDefaultOrder, setIsDefaultOrder] = useState(true);
 
@@ -110,6 +112,9 @@ export default function StartRoute({ fair, onBeginRoute, routeInfo, selectedMode
 
     return (
         <View style={styles.container}>
+            <TouchableOpacity style={{position: 'absolute', marginLeft: 10}} onPress={onBack}>
+                    <Ionicons style={{backgroundColor: 'white', padding: 2, borderColor: '#C64F23', borderWidth: 0.5, borderRadius: 20}} name="chevron-back" size={24} color={'#C64F23'} />
+                </TouchableOpacity>
             <View style={styles.transportContainer}>
                 <View style={styles.distanceInfo}>
                     {renderTransportButton('walking', require('../../assets/map-icons/walk-icon.png'), walkingDuration)}

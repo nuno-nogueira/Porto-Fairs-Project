@@ -1,6 +1,7 @@
 // Imports
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 // Item Definitions
 interface FairItem {id: number, title: string; schedule: string; address: string}
@@ -35,6 +36,9 @@ export default function FairDetails({ fair, onBack, onStartRoute, routeInfo }: F
     return (
         <View style={styles.container}>
             <View>
+                <TouchableOpacity style={{position: 'absolute',  marginTop: -40}} onPress={onBack}>
+                    <Ionicons style={{backgroundColor: 'white', padding: 5, borderColor: '#C64F23', borderWidth: 0.5, borderRadius: 20}} name="chevron-back" size={24} color={'#C64F23'} />
+                </TouchableOpacity>
                 <Image
                     // Fair Default Image
                     source={require('../../assets/images/fair-default-image.png')}

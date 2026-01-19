@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, ScrollView, Image, StyleSheet, TouchableOpacity, useColorScheme, FlatList } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, ScrollView, Image, StyleSheet, TouchableOpacity, useColorScheme, FlatList, Linking } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -7,10 +7,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
+import * as Location from 'expo-location';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { SELLERS, MARKETS } from '@/constants/data'; // Importar os teus dados
 import { SellerCard } from '@/components/profile-components/SellerCard';
+import MapViewDirections from 'react-native-maps-directions';
 
+
+const GOOGLE_MAPS_APIKEY = process.env.EXPO_PUBLIC_GOOGLE_APIKEY;
 
 export default function MarketDetailsScreen() {
   const { id } = useLocalSearchParams(); // ID from URL
@@ -20,8 +24,47 @@ export default function MarketDetailsScreen() {
   const [rating, setRating] = useState(0);
   const [isExpanded, setIsExpanded] = useState(false);
   const description = market.description || "Sem descrição disponível para esta feira.";
+  // ETA and distance info dynamically
+  const [userLocation, setUserLocation] = useState<any>(null);
+  const [routeInfo, setRouteInfo] = useState({ distance: '--', duration: '--'});
+  
+  // Get user geolocation
+  useEffect(() => {
+    (async() => {
+      let {status} = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return;
 
+      let location = await Location.getCurrentPositionAsync({});
+      setUserLocation({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      })
+    }) ();
+  },[]); 
 
+  // GOOGLE CALENDAR FETCH
+  const handleCalendarFunction = () => {
+    const baseURL = 'https://www.google.com/calendar/render?action=TEMPLATE'
+    
+    // Data format
+    const title = encodeURIComponent(`Visitar: ${market.title}`);
+    const location = encodeURIComponent(market.address);
+    const details = encodeURIComponent(`Horário da feira: ${market.schedule}`);
+
+    // Define start & ending dates for the event to be added in the calendar
+    const now = new Date();
+    const startDate = now.toISOString().replace(/-|:|\.\d+/g, '');
+
+    now.setHours(now.getHours() + 2);
+    const endDate = now.toISOString().replace(/-|:|\.\d+/g, '');
+
+    const dates = `${startDate}/${endDate}`;
+    const url = `${baseURL}&text=${title}&dates=${dates}&details=${details}&location=${location}`;
+
+    // Link the event to Google Calendar
+    Linking.openURL(url).catch((err) => console.error('Erro ao abrir calendário', err));
+    
+  }
   // ...
 
 
@@ -91,8 +134,27 @@ export default function MarketDetailsScreen() {
            {/* Distance (static) */}
            <View style={styles.row}>
             <Ionicons name="map" size={24} color={currentColors.primary} />
-            {/* edit here de distance */}
-            <ThemedText style={styles.rowText}>8,5km • 15min</ThemedText> 
+            {/*This is invisible but it needs to be here*/}
+            {userLocation && (
+              <View style={{height: 0, width: 0, opacity: 0, position: 'absolute'}}>
+                <MapViewDirections
+                  origin={userLocation}
+                  destination={{
+                    latitude: market.latitude,
+                    longitude: market.longitude
+                  }}
+                  apikey={GOOGLE_MAPS_APIKEY!}
+                  mode="DRIVING"
+                  onReady={(result) => {
+                    setRouteInfo({
+                      distance: result.distance.toFixed(1),
+                      duration: Math.round(result.duration).toString()
+                    })
+                  }}
+                />
+              </View>
+            )}
+            <ThemedText style={styles.rowText}>{routeInfo.distance} km • {routeInfo.duration} min</ThemedText> 
           </View>
 
           {/* Tags */}
@@ -120,11 +182,11 @@ export default function MarketDetailsScreen() {
             <PrimaryButton 
               title="Ver no Mapa" 
               iconName="navigate" 
-              onPress={() => {}} 
+              onPress={() => router.push('/(tabs)/map')} 
               style={{ flex: 1, marginRight: 10 }}
             />
             {/* Map button */}
-            <TouchableOpacity style={styles.calendarBtn}>
+            <TouchableOpacity style={styles.calendarBtn} onPress={handleCalendarFunction}>
                <Ionicons name="calendar" size={24} color="#000" />
             </TouchableOpacity>
           </View>

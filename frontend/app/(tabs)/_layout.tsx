@@ -25,7 +25,7 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen
-        name="index"
+        name="homepage"
         options={{
           title: '',
           tabBarIcon: ({ focused }) => (

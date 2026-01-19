@@ -4,18 +4,44 @@ import { Text, View, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { BottomSheetFlatList } from '@gorhom/bottom-sheet';
 
 // Item Definitions
-type ItemProps = {id: number, title: string; schedule: string; address: string, latitude: number, longitude: number, onPress: (item: FairItem) => void}
-interface FairItem {id: number, title: string; schedule: string; address: string, latitude: number, longitude: number}
+interface Person {
+  id: number;
+  name: string
+}
+type ItemProps = {id: 
+    number, 
+    title: string; 
+    schedule: string; 
+    address: string; 
+    latitude: number; 
+    longitude: number;
+    category: string;
+    county: string;
+    people: Person[];
+    onPress: (item: FairItem) => void
+}
+interface FairItem {
+    id: number, 
+    title: string; 
+    schedule: string; 
+    address: string;
+    latitude: number; 
+    longitude: number;
+    category: string;
+    county: string;
+    people: Person[];
+}
 interface MapListViewProps {
     data: FairItem[];
     onSelect: (item: FairItem) => void;
 }
 
-const Item = ({id, title, schedule, address, latitude, longitude, onPress}: ItemProps) => (
+const Item = ({id, title, schedule, address, latitude, longitude, category, county, people, onPress}: ItemProps) => (
   <TouchableOpacity 
   // Fair Card Info
   style={styles.card}
-  onPress={() => onPress({ id, title, schedule, address, latitude, longitude })}>
+  onPress={() => onPress({ id, title, schedule, address, latitude, longitude, category, county, people })}
+  >
     <View>
         <Image
             source={require('../../assets/images/fair-default-image.png')}
@@ -49,6 +75,9 @@ export default function MapListView({ data, onSelect }: MapListViewProps) {
             address={item.address}
             latitude={item.latitude}
             longitude={item.longitude}
+            category={item.category}
+            county={item.county}
+            people={item.people}
             onPress={onSelect}    
         />}
         horizontal={true}
