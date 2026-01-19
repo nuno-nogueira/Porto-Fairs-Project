@@ -14,10 +14,13 @@ const server = async () => {
 
     try {
         console.log("lalala");
+        console.log(process.env.MONGO_URI);
 
         await connectToMongoDB();
         
         console.log("lululu");
+
+        
 
         app.listen(port, () => {
             console.log(`App listening at http://localhost:${port}`);
@@ -28,5 +31,7 @@ const server = async () => {
         process.exit(1);
     }
 }
+
+
 
 server();
