@@ -79,7 +79,7 @@ export default function ProfileScreen() {
     setModalVisible(false); // Fecha o modal
   }
 
-  // 4. Apagar Anúncio
+  // 4. Delete announcement
   function deleteAnnouncement(id: number) {
     Alert.alert("Apagar", "Tens a certeza que queres apagar este anúncio?", [
       { text: "Cancelar", style: "cancel" },

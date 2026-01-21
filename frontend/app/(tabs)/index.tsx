@@ -1,19 +1,33 @@
-import React,  { useState } from 'react';
-import { StyleSheet, Image, View, TouchableOpacity, FlatList, Text } from 'react-native';
-import { ThemedView } from '@/components/themed-view';
-import { categoryIcons } from './categoryIcons';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import SearchBarComponent from '@/components/homepage-components/SearchBar';
-import FairList from '@/components/homepage-components/FairList';
-import data from '../data/locations.json';
-import categories from '../data/categories.json';
+import React, { useState,useEffect } from "react";
+import {
+  StyleSheet,
+  Image,
+  View,
+  TouchableOpacity,
+  FlatList,
+  useColorScheme,
+  ActivityIndicator,
+} from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
+import { ThemedView } from "@/components/themed-view";
+import { ThemedText } from "@/components/themed-text";
+import SearchBarComponent from "@/components/homepage-components/SearchBar";
+import FairList from "@/components/homepage-components/FairList";
 
-// Object Definitions
+import { categoryIcons } from "./categoryIcons";
+import data from "../data/locations.json";
+import categories from "../data/categories.json";
+import { Colors } from "@/constants/theme";
+
+//store imports
+import { useMarketStore } from "@/stores/useMarketStore";
+
 interface Person {
   id: number;
-  name: string
+  name: string;
 }
+
 interface FairItem {
   id: number;
   title: string;
@@ -24,80 +38,166 @@ interface FairItem {
   county: string;
   people: Person[];
 }
+
 interface HomepageProps {
-  onSelect: (item: FairItem) => void; 
+  onSelect: (item: FairItem) => void;
 }
 
-// Homepage Screen Definition
 export default function HomepageScreen({ onSelect }: HomepageProps) {
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
 
-  // Filter search bar
+  const theme = useColorScheme() ?? "light";
+  const brandColors = Colors[theme]; // Usando a mesma lógica do profile.tsx
+
+
+  // Conecta ao store de markets
+  const { markets, fetchMarkets, isLoading } = useMarketStore();
+
+  // 
+  useEffect(() => {
+    fetchMarkets();
+  }, []);
+
+  // ⚡ TRANSFORMAR DADOS DO BACKEND PARA O FRONTEND
+  // O backend devolve "Market", mas o FairList quer "FairItem". Vamos adaptar.
+  // const adaptedData: FairItem[] = markets.map((market: any) => ({
+  //   id: Number(market.id) || Math.random(), // Garante um ID numérico
+  //   title: market.name,                     // Backend: name -> Frontend: title
+  //   schedule: market.openingHours || '09:00 - 18:00', // Backend: openingHours -> Frontend: schedule
+  //   address: market.address,
+  //   // Se o backend tiver categorias, usa a primeira, senão usa 'Outros'
+  //   category: market.categories?.[0] || 'Outros', 
+  //   // Tenta adivinhar o ícone com base na categoria, ou usa um default
+  //   iconKey: market.categories?.[0] || 'fruits', 
+  //   county: market.address.split(',')[1]?.trim() || 'Portugal', // Extrai concelho da morada
+  //   people: market.sellers?.map((s: any) => ({ id: s.id, name: s.full_name })) || []
+  // }));
+
+  // Lógica de Filtro (Agora usa o 'adaptedData' em vez do JSON fixo)
+  ///// const filteredData = adaptedData.filter((item) => {
+
+  // Lógica de Filtro
   const filteredData = (data as FairItem[]).filter((item) => {
     const query = searchQuery.toLowerCase();
-
-    // Filter by fair name
     const matchesTitle = item.title.toLowerCase().includes(query);
-
-    // Filter by county
     const matchesCounty = item.county.toLowerCase().includes(query);
-
-    // Filter by fair vendor
-    const matchesVendor = item.people?.some(person => 
-      person.name.toLowerCase().includes(query)
-    )
+    const matchesVendor = item.people?.some((person) =>
+      person.name.toLowerCase().includes(query),
+    );
 
     const matchesSearch = matchesTitle || matchesCounty || matchesVendor;
+    const matchesCategory =
+      selectedCategory === "" || item.category === selectedCategory;
 
-    // Filter by category
-    const matchesCategory = selectedCategory === '' || item.category === selectedCategory;
-    
     return matchesSearch && matchesCategory;
   });
 
   return (
-    <GestureHandlerRootView style={{flex: 1}}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemedView style={styles.container}>
-        <View style={styles.appContainer}>
+        {/* === Header: Logo e Boas vindas === */}
+        <View style={styles.headerContainer}>
           <Image
-          source={require('../../assets/images/app-logo.png')}
+            source={require("../../assets/images/app-logo.png")}
+            style={styles.logo}
+            resizeMode="contain"
           />
+          <ThemedText type="title" style={styles.welcomeMessage}>
+            Bem vindo,{" "}
+            <ThemedText type="title" style={{ color: brandColors.tint }}>
+              Ricardo
+            </ThemedText>
+            !
+          </ThemedText>
         </View>
-        <Text style={styles.welcomeMessage}>Bem vindo (Nome)!</Text>
-        <View style={styles.searchBar}>
+
+        {/* === Barra de Pesquisa === */}
+        <View style={styles.searchContainer}>
           <SearchBarComponent
             value={searchQuery}
             onChange={setSearchQuery}
-            placeholder='Procura por nome, concelho...'
+            placeholder="Procura por nome, concelho..."
           />
         </View>
-        
-        <View style={styles.categorySelection}>
+
+        {/* === Lista de Categorias (Chips) === */}
+        <View style={styles.categoriesContainer}>
           <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
             data={categories}
             keyExtractor={(item) => item.name}
             contentContainerStyle={styles.categoriesContent}
-            renderItem={({item}) => (
-              <TouchableOpacity
-                style={[styles.categoryItem, selectedCategory === item.name && styles.categoryItemActive]}
-                onPress={() => setSelectedCategory(prev => prev === item.name ? '' : item.name)}
-              >
-                <Image
-                  source={categoryIcons[item.iconKey]}
-                />
-                <Text
-                style={[styles.categoryText, selectedCategory === item.name && styles.categoryItemActive]}>
-                  {item.name}
-                </Text>
-              </TouchableOpacity>
-            )}
+            renderItem={({ item }) => {
+              const isSelected = selectedCategory === item.name;
+
+              return (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  style={[
+                    styles.categoryItem,
+                    {
+                      backgroundColor: brandColors.cardBackground,
+                      borderColor: isSelected
+                        ? brandColors.tint
+                        : brandColors.border,
+                    },
+                  ]}
+                  onPress={() =>
+                    setSelectedCategory((prev) =>
+                      prev === item.name ? "" : item.name,
+                    )
+                  }
+                >
+                  <Image
+                    source={categoryIcons[item.iconKey]}
+                    style={{
+                      width: 20,
+                      height: 20,
+                      tintColor: isSelected
+                        ? brandColors.tint
+                        : brandColors.text,
+                    }}
+                    resizeMode="contain"
+                  />
+                  <ThemedText
+                    type="small"
+                    style={{
+                      fontWeight: "700",
+                      color: isSelected ? brandColors.tint : brandColors.text,
+                    }}
+                  >
+                    {item.name}
+                  </ThemedText>
+                </TouchableOpacity>
+              );
+            }}
           />
         </View>
-        <View style={{flex: 1}}>
-          <FairList data= {filteredData} onSelect={onSelect} />
+
+        {/* === Market list === */}
+        <View style={styles.listContainer}>
+          {
+
+          //   isLoading ? (
+          //   <View style={styles.loadingContainer}>
+          //     <ActivityIndicator size="large" color={brandColors.tint} />
+          //     <ThemedText style={{ marginTop: 10 }}>
+          //       A carregar feiras...
+          //     </ThemedText>
+          //   </View>
+          // ):
+          
+          filteredData.length > 0 ? (
+            <FairList data={filteredData} onSelect={onSelect} />
+          ) : (
+            <View style={styles.emptyState}>
+              <ThemedText style={{ color: "gray", fontStyle: "italic" }}>
+                Nenhuma feira encontrada com esses filtros.
+              </ThemedText>
+            </View>
+          )}
         </View>
       </ThemedView>
     </GestureHandlerRootView>
@@ -106,61 +206,55 @@ export default function HomepageScreen({ onSelect }: HomepageProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FCFBFA', 
-    flex: 1, 
-    paddingTop: 60
+    flex: 1,
+    paddingTop: 60,
+  },
+  headerContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 15,
+  },
+  logo: {
+    width: 120,
+    height: 40,
+    marginBottom: 10,
+    alignSelf: "flex-start",
   },
   welcomeMessage: {
-    fontSize: 24,
-    fontWeight: '800',
-    padding: 15
+    marginBottom: 5,
   },
-  appContainer: {
-    padding: 15
+  searchContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
-  searchBar: {
-    padding: 15
-  },
-  categorySelection: {
-    marginLeft: 15,
-    marginBottom: 40
+  categoriesContainer: {
+    marginBottom: 20,
   },
   categoriesContent: {
-    gap: 10, 
+    paddingHorizontal: 20,
+    gap: 10,
   },
   categoryItem: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignContent: 'center',
-    backgroundColor: 'white',
-    borderColor: '#E0E0E0',
+    flexDirection: "row",
+    alignItems: "center",
     borderWidth: 1,
     borderRadius: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    gap: 5,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  categoryItemActive: {
-    borderColor: '#C64F23',
+  listContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
   },
-  categoryText: {
-    color: '#C64F23',
-    fontWeight: '700',
-  },
-  categoryTextActive: {
-    color: '#FFF',
-    fontWeight: 'bold',
+  emptyState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 50,
   },
 });
-
-// import React from 'react';
-// import { View, Text } from 'react-native';
-
-// export default function Home() {
-//     return (
-//         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-//             <Text>Olá</Text>
-//         </View>
-//     );
-// }
-

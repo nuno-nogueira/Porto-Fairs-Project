@@ -1,48 +1,58 @@
-// Imports
 import React from 'react';
-import { StyleSheet } from 'react-native';
-import { ThemedView } from '../themed-view';
+import { StyleSheet, useColorScheme, View } from 'react-native';
 import { Searchbar } from 'react-native-paper';
+import { Colors } from '@/constants/theme'; 
 
-// Search Bar Component parameter definitions
 interface SearchBarProps {
     value: string;
     onChange: (text: string) => void;
     placeholder?: string
 }
 
-// Search Bar Component
-export default function SearchBarComponent({value, onChange, placeholder}: SearchBarProps) {
-    return(
-        <ThemedView>
+export default function SearchBarComponent({ value, onChange, placeholder }: SearchBarProps) {
+    const theme = useColorScheme() ?? 'light';
+    const colors = Colors[theme];
+
+    return (
+        <View style={styles.container}>
             <Searchbar
                 placeholder={placeholder || "Procura por nome, concelho..."}
                 onChangeText={onChange}
                 value={value}
-            
-                iconColor="#C64F23"           // Cor da lupa (Laranja)
-                rippleColor="#FAE8E1"         // Cor do efeito de clique
-                selectionColor="#C64F23"      // Cor do cursor ao digitar
-                placeholderTextColor="#7A716E" // Cor do texto de exemplo
-            
-                style={styles.searchBar}
-                inputStyle={styles.input}
+                
+                // Cores dinâmicas
+                iconColor={colors.tint}
+                rippleColor={colors.tint}
+                selectionColor={colors.tint}
+                placeholderTextColor={theme === 'dark' ? '#aaa' : '#7A716E'}
+                
+                style={[
+                    styles.searchBar, 
+                    { 
+                        backgroundColor: theme === 'light' ? '#FFFFFF' : 'rgba(255,255,255,0.1)',
+                        borderColor: colors.border
+                    }
+                ]}
+                inputStyle={[styles.input, { color: colors.text }]}
             />
-        </ThemedView>
-    )
+        </View>
+    );
 }
-const styles= StyleSheet.create({
+
+const styles = StyleSheet.create({
+    container: {
+        width: '100%', 
+        paddingHorizontal: 0, 
+    },
     searchBar: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#F0F0F0',
-    borderWidth: 1,
-    borderRadius: 12,
-    width: 300,
-    height: 45,
-  },
-  input: {
-    fontSize: 15,
-    minHeight: 0,
-    color: '#333',
-  },
-})
+        borderWidth: 1,
+        borderRadius: 12,
+        height: 50,
+        elevation: 0, 
+    },
+    input: {
+        fontSize: 15,
+        minHeight: 0,
+       
+    },
+});

@@ -1,167 +1,175 @@
-// Imports
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { Text, View, StyleSheet, Image, TouchableOpacity, FlatList } from 'react-native';
+import { View, StyleSheet, Image, TouchableOpacity, FlatList, useColorScheme } from 'react-native';
+import { Ionicons } from '@expo/vector-icons'; 
 import { categoryIcons } from '@/app/(tabs)/categoryIcons';
+import { ThemedText } from '@/components/themed-text'; 
+import { Colors } from '@/constants/theme'; 
 
-// Object Definitions
-type ItemProps = {
-    id: number, 
-    title: string; 
-    schedule: string; 
-    address: string;
-    category: string;
-    iconKey: string;
-    onPress: (item: FairItem) => void
-}
+
 interface FairItem {
-    id: number, 
-    title: string; 
-    schedule: string; 
-    address: string, 
+    id: number;
+    title: string;
+    schedule: string;
+    address: string;
     category: string;
     county: string;
     iconKey: string;
     people: any[];
 }
+
+interface ItemProps extends Omit<FairItem, 'people' | 'county'> {
+    onPress: () => void;
+}
+
 interface MapListViewProps {
     data: FairItem[];
     onSelect: (item: FairItem) => void;
 }
 
-// Card Item Definition
-const Item = ({id, title, schedule, address, category, iconKey}: ItemProps) => {
-    // Heart Icon state
+const Item = ({ id, title, schedule, address, category, iconKey, onPress }: ItemProps) => {
+    const theme = useColorScheme() ?? 'light';
+    const colors = Colors[theme];
     const [isFavorite, setIsFavorite] = useState(false);
-    
-    // Change state
+
     const handleFavorite = () => {
         setIsFavorite(prev => !prev);
-
-        // backend later
     };
-    
-    // Change Heart Icon on click
-    const favoriteIconSource = isFavorite 
-    ? require('../../assets/map-icons/favorite-icon.png')
-    : require('../../assets/map-icons/favorite-outlined-icon.png')
-    
-    return(
-    <TouchableOpacity
-    style={styles.card}
-    onPress={() => {router.push(`/market/${id}`)}}
-    >
-        <View>
-            <Image
-                style={styles.image}
-                source={require('../../assets/images/fair-default-image.png')}
-            />
-        </View>
-        <View>
-            <View style={{flexDirection: 'row'}}>
-                <Text style={styles.schedule}>{schedule}</Text>
-                <TouchableOpacity onPress={handleFavorite} style={{position: 'absolute'}}>
-                    <Image style={styles.favoriteIcon} source={favoriteIconSource}/>
-                </TouchableOpacity>
-            </View>
-            <Text style={styles.title}>{title}</Text>
-            <View style={styles.addressDiv}>
-                <Image
-                    source={require('../../assets/map-icons/address-icon.png')}
-                    style={styles.locationIcon}
-                />
-                <Text style={styles.address}>{address}</Text>
-            </View>
-            <View style={styles.categoriesDiv}>
-                <View style={styles.categoryIcon}>
-                    <Image source={categoryIcons[iconKey]} />
-                </View>
-            </View>
-        </View>
-    </TouchableOpacity>
-    )
-}
 
-// Fair List Component Definition
+    const cardBackgroundColor = theme === 'light' ? '#fff' : 'rgba(29, 37, 49, 0.61)';
+
+    return (
+        <TouchableOpacity
+            style={[styles.card, { backgroundColor: cardBackgroundColor }]}
+            onPress={onPress}
+            activeOpacity={0.7}
+        >
+            {/* Image */}
+            <View>
+                <Image
+                    style={styles.image}
+                    source={require('../../assets/images/fair-default-image.png')}
+                    resizeMode="cover"
+                />
+            </View>
+
+            <View style={styles.contentContainer}>
+                
+                {/* Linha do Topo: Horário e Coração */}
+                <View style={styles.headerRow}>
+                    <ThemedText type="small" style={{ color: colors.tint, fontWeight: '600' }}>
+                        {schedule}
+                    </ThemedText>
+                    
+                    <TouchableOpacity onPress={handleFavorite} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+                        <Ionicons 
+                            name={isFavorite ? "heart" : "heart-outline"} 
+                            size={25} 
+                            color={colors.tint} 
+                        />
+                    </TouchableOpacity>
+                </View>
+
+                {/* title */}
+                <ThemedText type="defaultSemiBold" style={styles.title} numberOfLines={1}>
+                    {title}
+                </ThemedText>
+
+                {/* address */}
+                <View style={styles.addressRow}>
+                    <Ionicons name="location-outline" size={14} color={colors.icon} style={{ marginRight: 4 }} />
+                    <ThemedText type="small" lightColor="#666" darkColor="#ccc" numberOfLines={1} style={{ flex: 1 }}>
+                        {address}
+                    </ThemedText>
+                </View>
+
+                {/* category */}
+                <View style={styles.footerRow}>
+                    <View style={[styles.categoryIconContainer, { borderColor: colors.tint }]}>
+                        <Image 
+                            source={categoryIcons[iconKey]} 
+                            style={{ width: 18, height: 18, tintColor: theme === 'dark' ? '#fff' : undefined }} 
+                            resizeMode="contain"
+                        />
+                    </View>
+                </View>
+
+            </View>
+        </TouchableOpacity>
+    );
+};
+
 export default function FairList({ data, onSelect }: MapListViewProps) {
-    
-    return(
-        <FlatList<FairItem> 
-        data= {data}
-        renderItem={({item}: {item: FairItem}) => 
-        <Item
-            id={item.id}
-            title={item.title} 
-            schedule={item.schedule} 
-            address={item.address}
-            category={item.category}
-            iconKey={item.iconKey}
-            onPress={() => {router.push(`/market/${item.id}`)}}   
-        />}
-        keyExtractor={(item: FairItem) => item.id.toString()}
+    return (
+        <FlatList<FairItem>
+            data={data}
+            renderItem={({ item }) => (
+                <Item
+                    id={item.id}
+                    title={item.title}
+                    schedule={item.schedule}
+                    address={item.address}
+                    category={item.category}
+                    iconKey={item.iconKey}
+                    onPress={() => router.push(`/market/${item.id}`)}
+                />
+            )}
+            keyExtractor={(item) => item.id.toString()}
+            contentContainerStyle={{ paddingBottom: 20 }} 
+            showsVerticalScrollIndicator={false}
         />
-    )
+    );
 }
 
 const styles = StyleSheet.create({
-    image: {
-        borderTopLeftRadius: 15,
-        borderTopRightRadius: 15,
-        borderBottomLeftRadius: 15,
-        borderBottomRightRadius: 15,
-    },
     card: {
         flexDirection: 'row',
-        padding: 5,
         width: '100%',
-        marginBottom: 10,
-        borderTopLeftRadius: 15,
-        borderTopRightRadius: 15,
-        borderBottomLeftRadius: 15,
-        borderBottomRightRadius: 15,
-        backgroundColor: 'white'
+        marginBottom: 12,
+        borderRadius: 16,
+        padding: 8,
+        paddingRight: 22,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
     },
-    schedule: {
-        color: '#F88B72',
-        fontSize: 12,
-        marginLeft: 15,
-        marginTop: 5
+    image: {
+        width: 100,
+        height: 100,
+        borderRadius: 12,
+        backgroundColor: '#e1e1e1',
     },
-    favoriteIcon: {
-        marginLeft: 180,
-        marginTop: 5
+    contentContainer: {
+        flex: 1,
+        marginLeft: 12,
+        justifyContent: 'space-between',
+        paddingVertical: 2,
+    },
+    headerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
     },
     title: {
-        fontWeight: 'bold',
-        fontSize: 16,
-        padding: 5,
-        marginLeft: 10,
-        marginTop: 5
+        marginBottom: 2,
     },
-    locationIcon: {
-        marginLeft: 12,
-        marginTop: 5
-    },
-    addressDiv: {
-        flexDirection: 'row'
-    },
-    address: {
-        fontSize: 12,
-        marginTop: 5,
-        paddingRight: 25,
-        paddingLeft: 5,
-    },
-    categoriesDiv: {
-        padding: 10,
-    },
-    categoryIcon: {
-        width: 30,
-        height: 30,
-        padding: 5,
-        borderColor: '#C64F23',
-        borderWidth: 1,
-        borderRadius: 20,
+    addressRow: {
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center'
-    }
-})
+        marginBottom: 6,
+    },
+    footerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    categoryIconContainer: {
+        width: 28,
+        height: 28,
+        borderWidth: 1,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+});
