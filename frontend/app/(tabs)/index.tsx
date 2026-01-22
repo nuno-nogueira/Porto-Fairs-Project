@@ -1,13 +1,32 @@
-import React,  { useState } from 'react';
+import React,  { useState, useEffect } from 'react';
 import { StyleSheet, Image, View, TouchableOpacity, FlatList, Text } from 'react-native';
 import { ThemedView } from '@/components/themed-view';
 import { categoryIcons } from './categoryIcons';
+import { useQuery } from '@apollo/client/react';
+import { gql } from '@apollo/client';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import SearchBarComponent from '@/components/homepage-components/SearchBar';
 import FairList from '@/components/homepage-components/FairList';
-import data from '../data/locations.json';
+//import data from '../data/locations.json';
 import categories from '../data/categories.json';
+import * as Notifications from 'expo-notifications';
 
+// Query resolver 'markets'
+const GET_MARKETS = gql`
+  query GetMarkets {
+    markets {
+      id
+      name
+      openingHours
+      address
+      categories
+      latitude
+      longitude
+      imageUrl
+      iconKey
+    }
+  }
+`
 
 // Object Definitions
 interface Person {
@@ -15,14 +34,21 @@ interface Person {
   name: string
 }
 interface FairItem {
-  id: number;
-  title: string;
-  schedule: string;
+  id: string;
+  name: string;
+  openingHours: string;
   address: string;
-  category: string;
-  iconKey: string;
-  county: string;
-  people: Person[];
+  categories: string[];
+  imageUrl: string;
+  latitude: number;
+  longitude: number;
+  // Back-end
+  title?: string;
+  county?: string;
+  people?: Person[];
+  category?: string;
+  iconKey?: string;
+  schedule?: string;
 }
 interface HomepageProps {
   onSelect: (item: FairItem) => void; 
@@ -32,27 +58,89 @@ interface HomepageProps {
 export default function HomepageScreen({ onSelect }: HomepageProps) {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const { data, loading, error } = useQuery<{ markets: FairItem[] }>(GET_MARKETS);
 
+  console.log("Status Query:", { loading, error: error?.message, count: data?.markets?.length });
+  // NOTIFICATIONS LOGIC
+  useEffect(() => {
+    if (data && data.markets) {
+      console.log(`Data received from the Microservice: Scheduling...`);
+      scheduleMarket(data.markets);
+    }
+  }, [data])
+
+  const scheduleMarket = async(markets: FairItem[]) => {
+    try {
+      await Notifications.cancelAllScheduledNotificationsAsync();
+
+      markets.forEach(async (market) => {
+      
+      try {
+
+        // Extract the time string (ex. Saturdays: mm:hh)
+        const match = market.openingHours?.match(/(\d{1,2}):(\d{2})/);
+
+        if (match) {
+          const hours = parseInt(match[1]);
+          const minutes = parseInt(match[2]);
+
+          let newDate: Date = new Date();
+          newDate.setHours(hours, minutes, 0, 0);
+
+          // Subtract x minutes
+          const notificationTime = new Date(newDate.getTime() - 1 * 60000);
+
+          // Schedule a market if necessary
+          if (notificationTime > new Date()) {
+            await Notifications.scheduleNotificationAsync({
+              content: {
+                title: "A feira está quase a começar!",
+                body: `A feira ${market.name} começa em breve!`,
+                priority: 'high',
+              },
+              trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.DATE, 
+                date: notificationTime,
+              } as Notifications.DateTriggerInput,
+            });
+            console.log('Scheduled successfully!');
+            
+          }
+        }      
+      } catch (error) {
+        console.log('Error in processing the schedule of:', error);
+      }
+    })
+    } catch (error) {
+      console.log('Error in processing the schedule of:', error);
+    }
+    
+  }
+
+  const marketList = data?.markets || [];
+  console.log(marketList);
+  
   // Filter search bar
-  const filteredData = (data as FairItem[]).filter((item) => {
-    const query = searchQuery.toLowerCase();
+  const filteredData = marketList.filter((item) => {
+    const query = searchQuery.toLowerCase().trim();
+    const name = item.name?.toLowerCase() || '';
+    const address = item.address?.toLowerCase() || '';
 
     // Filter by fair name
-    const matchesTitle = item.title.toLowerCase().includes(query);
+    const matchesTitle = name.includes(query);
 
     // Filter by county
-    const matchesCounty = item.county.toLowerCase().includes(query);
+    const matchesCounty = address.includes(query);
 
     // Filter by fair vendor
     const matchesVendor = item.people?.some(person => 
       person.name.toLowerCase().includes(query)
-    )
+    ) || false
 
     const matchesSearch = matchesTitle || matchesCounty || matchesVendor;
 
     // Filter by category
-    const matchesCategory = selectedCategory === '' || item.category === selectedCategory;
-    
+    const matchesCategory = selectedCategory === '' || (item.categories && item.categories.includes(selectedCategory));
     return matchesSearch && matchesCategory;
   });
 
@@ -97,7 +185,7 @@ export default function HomepageScreen({ onSelect }: HomepageProps) {
           />
         </View>
         <View style={{flex: 1}}>
-          <FairList data= {filteredData} onSelect={onSelect} />
+          <FairList data= {filteredData} onSelect={onSelect as any} />
         </View>
       </ThemedView>
     </GestureHandlerRootView>

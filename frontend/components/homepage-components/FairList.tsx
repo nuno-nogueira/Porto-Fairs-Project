@@ -4,25 +4,41 @@ import React, { useState } from 'react';
 import { Text, View, StyleSheet, Image, TouchableOpacity, FlatList } from 'react-native';
 import { categoryIcons } from '@/app/(tabs)/categoryIcons';
 
+// maps categoryIcons.ts to DB
+const categoryToIcon: { [key: string]: string } = {
+    "Alimentação": "alimentacao",
+    "Vestuário": "artesanato",
+    "Velharias": "velharias",
+    "Cultura": "cultura",
+    // Fallback caso venha algo diferente
+    "default": "cultura" 
+};
+
 // Object Definitions
 type ItemProps = {
-    id: number, 
+    id: string; // MUDOU de number para string
     title: string; 
     schedule: string; 
     address: string;
     category: string;
     iconKey: string;
-    onPress: (item: FairItem) => void
+    onPress: (id: string) => void
 }
 interface FairItem {
-    id: number, 
-    title: string; 
-    schedule: string; 
-    address: string, 
-    category: string;
-    county: string;
-    iconKey: string;
-    people: any[];
+    id: string;
+    name: string;
+    openingHours: string;
+    address: string;
+    categories: string[];
+    imageUrl: string;
+    latitude: number;
+    longitude: number;
+    // Back-end
+    title?: string;
+    county?: string;
+    category?: string;
+    iconKey?: string;
+    schedule?: string;
 }
 interface MapListViewProps {
     data: FairItem[];
@@ -30,15 +46,13 @@ interface MapListViewProps {
 }
 
 // Card Item Definition
-const Item = ({id, title, schedule, address, category, iconKey}: ItemProps) => {
+const Item = ({id, title, schedule, address, iconKey}: ItemProps) => {
     // Heart Icon state
     const [isFavorite, setIsFavorite] = useState(false);
     
     // Change state
     const handleFavorite = () => {
         setIsFavorite(prev => !prev);
-
-        // backend later
     };
     
     // Change Heart Icon on click
@@ -84,21 +98,20 @@ const Item = ({id, title, schedule, address, category, iconKey}: ItemProps) => {
 
 // Fair List Component Definition
 export default function FairList({ data, onSelect }: MapListViewProps) {
-    
     return(
         <FlatList<FairItem> 
         data= {data}
         renderItem={({item}: {item: FairItem}) => 
         <Item
             id={item.id}
-            title={item.title} 
-            schedule={item.schedule} 
+            title={item.name} 
+            schedule={item.openingHours} 
             address={item.address}
-            category={item.category}
-            iconKey={item.iconKey}
+            category={item.categories?.[0]}
+            iconKey={item.iconKey || 'default'}
             onPress={() => {router.push(`/market/${item.id}`)}}   
         />}
-        keyExtractor={(item: FairItem) => item.id.toString()}
+        keyExtractor={(item: FairItem) => item.id}
         />
     )
 }
