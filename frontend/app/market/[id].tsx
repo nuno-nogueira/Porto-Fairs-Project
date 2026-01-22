@@ -195,10 +195,14 @@ export default function MarketDetailsScreen() {
           <ThemedText type="subtitle" style={styles.sectionTitle}>Os nossos participantes</ThemedText>
           <FlatList
             horizontal
-            data={SELLERS}
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={item => item.id.toString()}
-            renderItem={({ item }) => <SellerCard item={item} onPress={() => {}} />}
+            data={SELLERS}   // vem de data.ts
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item }) => (
+              <SellerCard
+                item={item}
+                onPress={(seller) => router.push(`/sellers/${seller.id}`)}
+              />
+            )}
           />
 
           {/* === Rating === */}
