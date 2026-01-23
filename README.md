@@ -16,19 +16,10 @@ An app to discover local and traditional markets in the Porto district. It centr
 - Google Calendar integration for authenticated users.
 - Public and private profiles for vendors.
 
-### How to Run
-root/ 
-├─ backend/ 
-├─ frontend/
+### How to Run:
 
 #### Backend 
-cd backend 
-npm install 
-npx ts-node server.ts 
+cd backend  /  npm install  /  npx ts-node server.ts 
 
 #### Frontend 
-cd frontend 
-npm install 
-npx expo start 
-**or** 
-npx expo start --tunnel
+cd frontend  /  npm install  /  npx expo start **or** npx expo start --tunnel
