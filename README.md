@@ -50,3 +50,23 @@ cd backend  /  npm install  /  npx ts-node server.ts
 
 #### Frontend 
 cd frontend  /  npm install  /  npx expo start **or** npx expo start --tunnel
+
+## 👥 Team
+
+<table> <tr> <td align="center"> <a href="https://github.com/nuno-nogueira"> <img src="https://github.com/nuno-nogueira.png" width="100px;" alt="Nuno Nogueira"/> <br /> <sub><b>Nuno Nogueira</b></sub> </a> </td>
+
+<td align="center">
+  <a href="https://github.com/kenLukau31">
+    <img src="https://github.com/kenLukau31.png" width="100px;" alt="Ken Lukau"/>
+    <br />
+    <sub><b>Ken Lukau</b></sub>
+  </a>
+</td>
+
+<td align="center">
+  <a href="https://github.com/sandrafmoreira">
+    <img src="https://github.com/sandrafmoreira.png" width="100px;" alt="Sandra Moreira"/>
+    <br />
+    <sub><b>Sandra Moreira</b></sub>
+  </a>
+</td>
