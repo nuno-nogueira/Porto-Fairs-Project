@@ -61,6 +61,14 @@ cd frontend  /  npm install  /  npx expo start **or** npx expo start --tunnel
 <table> <tr> <td align="center"> <a href="https://github.com/nuno-nogueira"> <img src="https://github.com/nuno-nogueira.png" width="100px;" alt="Nuno Nogueira"/> <br /> <sub><b>Nuno Nogueira</b></sub> </a> </td>
 
 <td align="center">
+  <a href="https://github.com/AnaCatarina7">
+    <img src="https://github.com/AnaCatarina7.png" width="100px;" alt="Ana Catarina"/>
+    <br />
+    <sub><b>Ana Catarina</b></sub>
+  </a>
+</td>
+
+<td align="center">
   <a href="https://github.com/kenLukau31">
     <img src="https://github.com/kenLukau31.png" width="100px;" alt="Ken Lukau"/>
     <br />
