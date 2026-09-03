@@ -12,6 +12,11 @@ The app targets both consumers and vendors, improving access to events and promo
 - Google Calendar integration
 - Push notifications (conceptual)
 
+![Splash Screen](screenshots/app-splashscreen.png)
+![Vendor Profile](screenshots/vendor-profile.png)
+![Fair Page Info](screenshots/fair-page-info.png)
+![Rouute Showcase](screenshots/route-showcasing.png)
+
 ## Technologies
 - React Native
 - Typescript
