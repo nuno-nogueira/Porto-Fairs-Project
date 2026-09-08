@@ -31,14 +31,6 @@ The app targets both consumers and vendors, improving access to events and promo
 - APIs: Google Cloud (Maps and Calendar)
 - Modular structure with screens, components and services.
 
-### Key Features:
-- Interactive map with market locations and routes.
-- Search and filters by municipality and category.
-- Favorite markets and vendors.
-- Push alerts and notifications.
-- Google Calendar integration for authenticated users.
-- Public and private profiles for vendors.
-
 ### How to Run:
 
 #### Backend 
