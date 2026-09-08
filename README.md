@@ -24,15 +24,6 @@ The app targets both consumers and vendors, improving access to events and promo
 - Google Maps API (concept)
 - Android Studio/ios
 
-## My Contribution
-- Feature definition and functional requirements
-- UI structure and navigation flows
-- Collaboration on system design and user experience
-- frontend developement
-- micriservices connection
-## Mobile App – Feiras. 
-An app to discover local and traditional markets in the Porto district. It centralizes information about market dates, locations, vendors, and products, helping both consumers and market sellers access and share relevant information easily.
-
 ### Architecture & Technologies:
 - Frontend: React Native + Expo
 - Backend: Node.js + TypeScript
