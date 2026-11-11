@@ -1,0 +1,115 @@
+name: feiras-app
+
+services:
+  users-service:
+    build:
+      context: ./users-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3000
+      HOST: 0.0.0.0
+      MONGO_URL: ${MONGO_URL_USERS:?Set MONGO_URL_USERS in the root .env file}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the root .env file}
+    expose:
+      - "3000"
+    networks:
+      - feiras-net
+
+  markets-service:
+    build:
+      context: ./markets-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      GRAPHQL_PORT: 3001
+      BIND_HOST: 0.0.0.0
+      MONGO_URL: ${MONGO_URL_MARKETS:?Set MONGO_URL_MARKETS in the root .env file}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the root .env file}
+      USERS_SERVICE_URL: http://users-service:3000
+      RATINGS_SERVICE_URL: http://ratings-service:3004
+    expose:
+      - "3001"
+    networks:
+      - feiras-net
+
+  ratings-service:
+    build:
+      context: ./ratings-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3004
+      HOST: 0.0.0.0
+      MONGO_URL: ${MONGO_URL_RATINGS:?Set MONGO_URL_RATINGS in the root .env file}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the root .env file}
+      MARKETS_SERVICE_URL: http://markets-service:3001
+    expose:
+      - "3004"
+    networks:
+      - feiras-net
+
+  favorites-service:
+    build:
+      context: ./favorites-service
+    restart: unless-stopped
+    environment:
+      SPRING_DATA_MONGODB_URI: ${MONGO_URL_FAVORITES:?Set MONGO_URL_FAVORITES in the root .env file}
+      SERVER_PORT: 3003
+    expose:
+      - "3003"
+    networks:
+      - feiras-net
+
+  notifications-service:
+    build:
+      context: ./notifications-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3002
+      HOST: 0.0.0.0
+      MONGO_URL: ${MONGO_URL_NOTIFICATIONS:?Set MONGO_URL_NOTIFICATIONS in the root .env file}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the root .env file}
+      USERS_SERVICE_URL: http://users-service:3000
+    expose:
+      - "3002"
+    depends_on:
+      - users-service
+    networks:
+      - feiras-net
+
+  notes-service:
+    build:
+      context: ./notes-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3005
+      HOST: 0.0.0.0
+      MONGO_URL: ${MONGO_URL_NOTES:?Set MONGO_URL_NOTES in the root .env file}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the root .env file}
+    expose:
+      - "3005"
+    networks:
+      - feiras-net
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+    restart: unless-stopped
+    ports:
+      - "${GATEWAY_PORT:-8080}:80"
+    depends_on:
+      - users-service
+      - markets-service
+      - ratings-service
+      - favorites-service
+      - notifications-service
+      - notes-service
+    networks:
+      - feiras-net
+
+networks:
+  feiras-net:
+    driver: bridge

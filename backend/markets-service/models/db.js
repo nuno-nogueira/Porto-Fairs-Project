@@ -1,30 +1,28 @@
-import mongoose from 'mongoose';
-import 'dotenv/config'; 
-import MarketModel from './markets.model.js';
+import mongoose from "mongoose";
+import "dotenv/config";
+import MarketModel from "./markets.model.js";
 
+const db = {
+  mongoose,
+  Market: MarketModel(mongoose),
+};
 
-const db = {};
-db.mongoose = mongoose;
+function getMongoUrl() {
+  if (process.env.MONGO_URL) return process.env.MONGO_URL;
 
-(async () => {
-    try {
-        const config = {
-            USER: process.env.DB_USER,
-            PASSWORD: process.env.DB_PASSWORD,
-            DB: process.env.DB_NAME,
-            HOST: process.env.HOST
-        };
-        
-        const mongoDBURL = process.env.MONGO_URL || `mongodb+srv://sic_db_user:${config.PASSWORD}@cluster0.mzx76ay.mongodb.net/${config.DB}?retryWrites=true&w=majority`;
+  const { DB_USER, DB_PASSWORD, DB_NAME, DB_HOST } = process.env;
+  if (!DB_USER || !DB_PASSWORD || !DB_NAME || !DB_HOST) {
+    throw new Error(
+      "MongoDB is not configured. Set MONGO_URL or DB_USER, DB_PASSWORD, DB_NAME and DB_HOST.",
+    );
+  }
 
-        await db.mongoose.connect(mongoDBURL);
-        console.log("Connected to the database!");
-    } catch (error) {
-        console.log("❌ Unable to connect to the database:", error);
-        process.exit(1);
-    }
-})();
+  return `mongodb+srv://${encodeURIComponent(DB_USER)}:${encodeURIComponent(DB_PASSWORD)}@${DB_HOST}/${DB_NAME}?retryWrites=true&w=majority`;
+}
 
-db.Market = MarketModel(mongoose);
+db.connect = async () => {
+  await mongoose.connect(getMongoUrl());
+  console.info("Markets service connected to MongoDB.");
+};
+
 export default db;
-

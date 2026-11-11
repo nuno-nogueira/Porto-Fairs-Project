@@ -32,7 +32,7 @@ const resolvers = {
         sellers: async (market) => {
             if (!market.sellers || market.sellers.length === 0) return [];
             try {
-                const requests = market.sellers.map(id => axios.get(`http://${process.env.HOST}:${process.env.USERS_SERVICE_PORT}/users/sellers/${id}`));
+                const requests = market.sellers.map(id => axios.get(`${process.env.USERS_SERVICE_URL || "http://users-service:3000"}/users/sellers/${id}`));
                 const responses = await Promise.all(requests);
                 return responses.map(res => (
                     {
@@ -40,7 +40,7 @@ const resolvers = {
                         id: res.data.id  // Map "id" to "id" for GraphQL schema 
                     }));
             } catch (error) {
-                logger.error(`Failed URL: http://localhost:${process.env.USERS_SERVICE_PORT}/users/sellers/...`);
+                logger.error(`Failed URL: ${process.env.USERS_SERVICE_URL || "http://users-service:3000"}/users/sellers/...`);
                 logger.error(`External Service Error (Users): ${error.message} on market ${market._id}`);
                 return [];
             }
@@ -49,7 +49,7 @@ const resolvers = {
         ratings: async (market) => {
             if (!market) return null;
             try {
-                const response = await axios.get(`http://${process.env.HOST}:${process.env.RATINGS_SERVICE_PORT}/ratings/markets/${market.id}`);
+                const response = await axios.get(`${process.env.RATINGS_SERVICE_URL || "http://ratings-service:3004"}/ratings/markets/${market.id}`);
                 logger.info(`Fetching ratings for market ${market.id} from external service...`);
 
                 const ratingsData = response.data.data.marketRatings;
@@ -66,7 +66,7 @@ const resolvers = {
         averageRating: async (market) => {
             if (!market) return null;
             try {
-                const response = await axios.get(`http://${process.env.HOST}:${process.env.RATINGS_SERVICE_PORT}/ratings/markets/${market.id}`);
+                const response = await axios.get(`${process.env.RATINGS_SERVICE_URL || "http://ratings-service:3004"}/ratings/markets/${market.id}`);
                 logger.info(`Fetching ratings for market ${market.id} from external service...`);
                 return response.data.data.averageRating;
 
@@ -162,7 +162,7 @@ const resolvers = {
                 authorizeRole(context.user, 'admin');// Only admin can modify sellers
                 logger.info(`Admin [${context.user.id}] adding seller [${sellerId}] to market [${marketId}]`);
                 try {
-                    await axios.get(`http://${process.env.HOST}:${process.env.USERS_SERVICE_PORT}/users/sellers/${sellerId}`);
+                    await axios.get(`${process.env.USERS_SERVICE_URL || "http://users-service:3000"}/users/sellers/${sellerId}`);
                 } catch (err) {
                     throw new Error("Seller not found in User Service or Service is Down.");
                 }

@@ -1,31 +1,29 @@
-import { ApolloServer } from '@apollo/server';
-import { startStandaloneServer } from '@apollo/server/standalone';
-import 'dotenv/config';
-import './jobs/cron.js';
+import { ApolloServer } from "@apollo/server";
+import { startStandaloneServer } from "@apollo/server/standalone";
+import "dotenv/config";
 
-// IMPORT typeDefs / resolvers
-import typeDefs from './graphql/schema.js';
-import resolvers from './graphql/resolvers.js';
+import typeDefs from "./graphql/schema.js";
+import resolvers from "./graphql/resolvers.js";
+import logger from "./utils/logger.js";
+import db from "./models/db.js";
+import { authenticateToken } from "./middlewares/auth.middleware.js";
 
-// Logger
-import logger from './utils/logger.js';
+const PORT = Number(process.env.GRAPHQL_PORT || 3001);
+const HOST = process.env.BIND_HOST || "0.0.0.0";
 
-//Auth Middleware
-import { authenticateToken } from './middlewares/auth.middleware.js';
+async function startServer() {
+  await db.connect();
 
-// Create Apollo Server
-const server = new ApolloServer({
-  typeDefs,
-  resolvers,
+  const server = new ApolloServer({ typeDefs, resolvers });
+  const { url } = await startStandaloneServer(server, {
+    listen: { port: PORT, host: HOST },
+    context: async ({ req }) => ({ user: authenticateToken(req) }),
+  });
+
+  logger.info(`GraphQL Markets Service running at: ${url}`);
+}
+
+startServer().catch((error) => {
+  logger.error({ err: error }, "Markets service failed to start.");
+  process.exit(1);
 });
-
-const { url } = await startStandaloneServer(server, {
-  listen: { port: process.env.GRAPHQL_PORT },
-  context: async ({ req }) => {
-    const user = authenticateToken(req);
-    // if (user) logger.info(`Request from User: ${user.id}`);
-    return { user };
-  }
-});
-
-logger.info(`GraphQL Markets Service running at: ${url}`);

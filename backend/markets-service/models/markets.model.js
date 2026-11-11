@@ -33,10 +33,6 @@ export default (mongoose) => {
         type: [String], 
         required: [true, 'At least one category is required!'] 
       },
-      iconKey: {
-        type: String,
-        required: [true, 'This field is required.']
-      },
       sellers: { type: [String], default: [] },
       //ratings: [{ userId: String, rating: Number }]
     },

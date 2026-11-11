@@ -1,0 +1,85 @@
+# Legacy Docker Swarm definition. The supported development workflow is
+# docker compose up --build using docker-compose.yml.
+# For Swarm, build/tag/push the images first and export the variables below
+# in the deployment shell. Create an overlay network named feiras-net first.
+
+services:
+  users-service:
+    image: ${USERS_IMAGE:-users-service:1.0}
+    environment:
+      PORT: 3000
+      HOST: 0.0.0.0
+      MONGO_URL: ${MONGO_URL_USERS:?Set MONGO_URL_USERS}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+    networks: [feiras-net]
+    deploy:
+      replicas: 2
+
+  markets-service:
+    image: ${MARKETS_IMAGE:-markets-service:1.0}
+    environment:
+      GRAPHQL_PORT: 3001
+      BIND_HOST: 0.0.0.0
+      MONGO_URL: ${MONGO_URL_MARKETS:?Set MONGO_URL_MARKETS}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+      USERS_SERVICE_URL: http://users-service:3000
+      RATINGS_SERVICE_URL: http://ratings-service:3004
+    networks: [feiras-net]
+    deploy:
+      replicas: 2
+
+  ratings-service:
+    image: ${RATINGS_IMAGE:-ratings-service:1.0}
+    environment:
+      PORT: 3004
+      HOST: 0.0.0.0
+      MONGO_URL: ${MONGO_URL_RATINGS:?Set MONGO_URL_RATINGS}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+      MARKETS_SERVICE_URL: http://markets-service:3001
+    networks: [feiras-net]
+    deploy:
+      replicas: 2
+
+  favorites-service:
+    image: ${FAVORITES_IMAGE:-favorites-service:1.0}
+    environment:
+      SERVER_PORT: 3003
+      SPRING_DATA_MONGODB_URI: ${MONGO_URL_FAVORITES:?Set MONGO_URL_FAVORITES}
+    networks: [feiras-net]
+    deploy:
+      replicas: 2
+
+  notifications-service:
+    image: ${NOTIFICATIONS_IMAGE:-notifications-service:1.0}
+    environment:
+      PORT: 3002
+      HOST: 0.0.0.0
+      MONGO_URL: ${MONGO_URL_NOTIFICATIONS:?Set MONGO_URL_NOTIFICATIONS}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+      USERS_SERVICE_URL: http://users-service:3000
+    networks: [feiras-net]
+    deploy:
+      replicas: 2
+
+  notes-service:
+    image: ${NOTES_IMAGE:-notes-service:1.0}
+    environment:
+      PORT: 3005
+      HOST: 0.0.0.0
+      MONGO_URL: ${MONGO_URL_NOTES:?Set MONGO_URL_NOTES}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+    networks: [feiras-net]
+    deploy:
+      replicas: 2
+
+  api-gateway:
+    image: ${GATEWAY_IMAGE:-api-gateway:1.0}
+    ports:
+      - "${GATEWAY_PORT:-8080}:80"
+    networks: [feiras-net]
+    deploy:
+      replicas: 2
+
+networks:
+  feiras-net:
+    external: true
