@@ -4,10 +4,9 @@
     "slug": "CMU-Project",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/favicon1.png",
+    "icon": "./assets/images/app-icon.png",
     "scheme": "cmuproject",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true
     },
@@ -15,21 +14,19 @@
       "package": "com.cmu.fairs",
       "adaptiveIcon": {
         "backgroundColor": "#C64F23",
-        "foregroundImage": "./assets/images/favicon1.png"
-      },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+        "foregroundImage": "./assets/images/app-icon.png"
+      }
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon1.png"
+      "favicon": "./assets/images/app-icon.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/favicon1.png",
+          "image": "./assets/images/app-icon.png",
           "imageWidth": 400,
           "resizeMode": "cover",
           "backgroundColor": "#C64F23",
@@ -38,7 +35,9 @@
           }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-font",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -50,6 +49,6 @@
         "projectId": "39c1f299-afc6-4dc0-bfcd-da8aaebf53f6"
       }
     },
-    "owner": "nunooo"
+    "owner": "SIC_Group"
   }
 }

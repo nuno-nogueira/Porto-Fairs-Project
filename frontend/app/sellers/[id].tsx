@@ -37,7 +37,6 @@ const VendorPage = () => {
         keyExtractor={() => "key"}
         style={styles.flatList}
         contentContainerStyle={styles.container}
-        renderItem={null}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <>

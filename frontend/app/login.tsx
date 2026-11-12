@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Image, View, TextInput, Pressable, Text, StyleSheet, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation } from 'expo-router/react-navigation';
 
 export default function Login() {
 

@@ -16,8 +16,7 @@ import { categoryIcons } from './categoryIcons';
 import categories from '../data/categories.json';
 
 // GOOGLE MAPS API KEY
-const GOOGLE_MAPS_APIKEY = process.env.EXPO_PUBLIC_GOOGLE_APIKEY
-console.log(GOOGLE_MAPS_APIKEY);
+
 
 // User Location by default (center of Porto)
 const USER_LOCATION = {
@@ -305,7 +304,9 @@ export default function MapScreen() {
             
             {(viewMode === 'details' || viewMode === 'route' || viewMode === 'fullRoute') && selectedFair && (
               // DRIVING MODE
-                <MapViewDirections
+                <></>
+                /**
+                 * <MapViewDirections
                 origin={userLocation}
                 destination={{
                   latitude: selectedFair.latitude,
@@ -333,10 +334,13 @@ export default function MapScreen() {
                         mapRef.current?.fitToCoordinates(result.coordinates, { edgePadding: {top: 100, right: 100, bottom: 100, left: 100}});
                     }}
                 />
+                 */
             ) }
             {(viewMode === 'route' || viewMode === 'fullRoute') && selectedFair && (
               // WALKING MODE
-                <MapViewDirections
+                <></>
+                /**
+                * <MapViewDirections
                 origin={userLocation}
                 destination={{
                   latitude: selectedFair.latitude,
@@ -361,10 +365,13 @@ export default function MapScreen() {
                         }))
                     }}
                 />
+                */
             ) }
             {(viewMode === 'route' || viewMode === 'fullRoute') && selectedFair && (
+              <></>
               // TRANSIT MODE 
-                <MapViewDirections
+                /**
+                * <MapViewDirections
                 origin={userLocation}
                 destination={{
                   latitude: selectedFair.latitude,
@@ -389,6 +396,7 @@ export default function MapScreen() {
                         }))
                     }}
                 />
+                */
             ) }
             
         </MapView>

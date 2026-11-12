@@ -11,10 +11,9 @@ import * as Location from 'expo-location';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { SELLERS, MARKETS } from '@/constants/data'; // Importar os teus dados
 import { SellerCard } from '@/components/profile-components/SellerCard';
-import MapViewDirections from 'react-native-maps-directions';
+//import MapViewDirections from 'react-native-maps-directions';
 
 
-const GOOGLE_MAPS_APIKEY = process.env.EXPO_PUBLIC_GOOGLE_APIKEY;
 
 export default function MarketDetailsScreen() {
   const { id } = useLocalSearchParams(); // ID from URL
@@ -137,21 +136,24 @@ export default function MarketDetailsScreen() {
             {/*This is invisible but it needs to be here*/}
             {userLocation && (
               <View style={{height: 0, width: 0, opacity: 0, position: 'absolute'}}>
-                <MapViewDirections
-                  origin={userLocation}
-                  destination={{
-                    latitude: market.latitude,
-                    longitude: market.longitude
-                  }}
-                  apikey={GOOGLE_MAPS_APIKEY!}
-                  mode="DRIVING"
-                  onReady={(result) => {
-                    setRouteInfo({
-                      distance: result.distance.toFixed(1),
-                      duration: Math.round(result.duration).toString()
-                    })
-                  }}
-                />
+                  {/**
+                   * <MapViewDirections
+                    origin={userLocation}
+                    destination={{
+                      latitude: market.latitude,
+                      longitude: market.longitude
+                    }}
+                    apikey={GOOGLE_MAPS_APIKEY!}
+                    mode="DRIVING"
+                    onReady={(result) => {
+                      setRouteInfo({
+                        distance: result.distance.toFixed(1),
+                        duration: Math.round(result.duration).toString()
+                      })
+                    }}
+                  />
+                   * 
+                   */}
               </View>
             )}
             <ThemedText style={styles.rowText}>{routeInfo.distance} km • {routeInfo.duration} min</ThemedText> 
@@ -240,7 +242,6 @@ const styles = StyleSheet.create({
   },
   headerImage: { width: '100%', height: '100%', resizeMode: 'cover' },
   overlay: {
-    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.1)',
   },
   headerButtons: {
