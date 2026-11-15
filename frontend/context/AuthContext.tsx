@@ -1,6 +1,7 @@
 import React, {  createContext, useContext, useState, useEffect, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";   
 import api from "@/api/axios";
+import { parse } from "graphql";
 
 interface User {
     _id: string;
@@ -9,9 +10,17 @@ interface User {
     role: string;
 }
 
+interface RegisterPayload {
+    name: string;
+    email: string;
+    password: string;
+    role: 'buyer' | 'seller';
+    current_location ?: string;
+    description ?: string;
+}
+
 interface AuthContext {
-    
-    user: User|null;
+    user: User | null;
     loading: boolean;
     
     login: (
@@ -20,9 +29,7 @@ interface AuthContext {
     ) => Promise<void>;
     
     register: (
-        name: string,
-        email: string,
-        password: string
+        payload: RegisterPayload
     ) => Promise<void>;
     
     logout: () => Promise<void>;
@@ -39,30 +46,26 @@ export const AuthProvider = ({ children }: { children: ReactNode}) => {
         let isMounted = true; 
 
         const loadUser = async () => {
-
             try {
-                const token = await AsyncStorage.getItem("token");
-                if (!token) {
+                const [token, storedUser] = await Promise.all([
+                    AsyncStorage.getItem('token'),
+                    AsyncStorage.getItem('user')
+                ])
+
+                if (!token || !storedUser) {
+                    await AsyncStorage.multiRemove(['token', 'user']);
                     return;
                 }
 
-                console.log("asdsadasdas", token);
-                
-                api.get("/users/me")
-                    .then(res => {
-                        if (isMounted) setUser(res.data);
-                    })
-                    .catch(async () => {
-                        await AsyncStorage.removeItem("token");
-                    })
-                    .finally(() => {
-                        if (isMounted) setLoading(false);
-                    });
+                const parsedUser: User = JSON.parse(storedUser);
 
+                if (isMounted) setUser(parsedUser);
 
             } catch (err) {
                 console.warn("Não foi possível carregar o user:", err);
-                await AsyncStorage.removeItem("token");
+                await AsyncStorage.multiRemove(['token', 'user']);
+                if (isMounted) setUser(null);
+
             } finally {
                 if (isMounted) setLoading(false); 
             }
@@ -79,19 +82,42 @@ export const AuthProvider = ({ children }: { children: ReactNode}) => {
     const login = async (email: string, password: string) => {
         
         const response = await api.post("/users/login", {email, password});
-        setUser(response.data.user);
+        
+        const backendUser = response.data.user;
+        const accessToken = response.data.accessToken;
 
-        await AsyncStorage.setItem("token", response.data.token);
+        if (!backendUser || !accessToken) throw new Error("Resposta de autenticação inválida!");
+
+        const authenticatedUser: User = {
+            _id: backendUser._id,
+            name: backendUser.full_name,
+            email: backendUser.email,
+            role: backendUser.role
+        }
+
+        await AsyncStorage.multiSet([
+            ['token', accessToken],
+            ['user', JSON.stringify(authenticatedUser)]
+        ]);
+
+        setUser(authenticatedUser);
     };
 
-    const register = async (name: string, email: string, password: string) => {
+    const register = async (payload: RegisterPayload) => {
+        const requestBody: RegisterPayload = {...payload};
 
-        await api.post("/users/register", {name, email, password});
+        console.log('test 2 passed')
+        // Optional fields
+        if (!requestBody.current_location?.trim()) delete requestBody.current_location;
+        if (!requestBody.description?.trim()) delete requestBody.description;
+
+        await api.post('/users/register', requestBody);
     }
 
+
     const logout = async () => {
+        await AsyncStorage.multiRemove(['token', 'user']);
         setUser(null);
-        await AsyncStorage.removeItem('token');
     };
 
     return (

@@ -14,6 +14,8 @@ import {
 import { router } from 'expo-router'; 
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { Redirect } from 'expo-router';
+import { useAuth } from '@/context/AuthContext';
 
 // Import components
 import { ProfileHeader } from "@/components/profile-components/ProfileHeader";
@@ -42,6 +44,7 @@ export default function ProfileScreen() {
   const [announcements, setAnnouncements] = useState(POSTS);
   const [modalVisible, setModalVisible] = useState(false); // control modal visibility
   const [newPostText, setNewPostText] = useState(""); // add new post text
+  const {user, loading} = useAuth();
 
   // Pick image from gallery
   const handlePickImage = async () => {
@@ -91,6 +94,10 @@ export default function ProfileScreen() {
       },
     ]);
   }
+
+  if (loading) return null;
+
+  if (!user) return <Redirect href="/signup" />
 
   return (
     <ThemedView style={styles.container}>

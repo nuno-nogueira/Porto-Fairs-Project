@@ -8,6 +8,9 @@ import { Host } from 'react-native-portalize'
 import { LogBox } from 'react-native';
 import { AuthProvider } from '@/context/AuthContext';
 import * as Notifications from 'expo-notifications';
+import { ActivityIndicator, View } from 'react-native';
+import { useAuth } from '@/context/AuthContext';
+import { SetupProvider } from '@/context/SetupContext';
 
 const httpLink = createHttpLink({
   uri: 'http://192.168.43.145:4000/graphql',
@@ -30,6 +33,43 @@ Notifications.setNotificationHandler({
     shouldShowList: true,
   }),
 });
+
+function AppNavigator() {
+  const {user, loading} = useAuth();
+
+  // wait until the authentication check finishes
+  if (loading) {
+    return (
+      <View
+        style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: '#fff'
+        }}
+        >
+          <ActivityIndicator size="large" color="#c23727ff" />
+      </View>
+    );
+  }
+
+  return (
+    <Stack>
+      {/* the authentication pages are only accessible for logged out users */}
+      <Stack.Protected
+        guard={!user}
+        redirectTo="/">
+          <Stack.Screen
+            name="(auth)"
+            options={{ headerShown: false }}/>
+      </Stack.Protected>
+
+      <Stack.Screen 
+        name="(tabs)"
+        options={{ headerShown: false }}/>
+    </Stack>
+  )
+}
 
 export default function RootLayout() {
   
@@ -55,13 +95,17 @@ export default function RootLayout() {
   return (
     <ApolloProvider client={client}>
       <AuthProvider>
-          <GestureHandlerRootView style={{ flex: 1}}>
-          <Host>
-              <Stack>
-                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              </Stack>
-          </Host>
-          </GestureHandlerRootView>
+          <SetupProvider>
+            <GestureHandlerRootView style={{ flex: 1}}>
+              <Host>
+                  <Stack>
+                      <Stack.Screen name='(auth)' options={{headerShown: false}} />
+
+                      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                  </Stack>
+              </Host>
+            </GestureHandlerRootView>
+          </SetupProvider>
       </AuthProvider>
     </ApolloProvider>
   );

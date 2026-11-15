@@ -1,5 +1,5 @@
 import React,  { useState, useEffect } from 'react';
-import { StyleSheet, Image, View, TouchableOpacity, FlatList, Text } from 'react-native';
+import { StyleSheet, Image, View, TouchableOpacity, FlatList, Text, Button } from 'react-native';
 import { ThemedView } from '@/components/themed-view';
 import { categoryIcons } from './categoryIcons';
 import { useQuery } from '@apollo/client/react';
@@ -10,6 +10,7 @@ import FairList from '@/components/homepage-components/FairList';
 //import data from '../data/locations.json';
 import categories from '../data/categories.json';
 import * as Notifications from 'expo-notifications';
+import { router } from 'expo-router';
 
 // Query resolver 'markets'
 const GET_MARKETS = gql`
@@ -61,13 +62,6 @@ export default function HomepageScreen({ onSelect }: HomepageProps) {
   const { data, loading, error } = useQuery<{ markets: FairItem[] }>(GET_MARKETS);
 
   console.log("Status Query:", { loading, error: error?.message, count: data?.markets?.length });
-  // NOTIFICATIONS LOGIC
-  useEffect(() => {
-    if (data && data.markets) {
-      console.log(`Data received from the Microservice: Scheduling...`);
-      scheduleMarket(data.markets);
-    }
-  }, [data])
 
   const scheduleMarket = async(markets: FairItem[]) => {
     try {
@@ -114,8 +108,18 @@ export default function HomepageScreen({ onSelect }: HomepageProps) {
     } catch (error) {
       console.log('Error in processing the schedule of:', error);
     }
+
+    
     
   }
+
+  // NOTIFICATIONS LOGIC
+  useEffect(() => {
+    if (data && data.markets) {
+      console.log(`Data received from the Microservice: Scheduling...`);
+      scheduleMarket(data.markets);
+    }
+  }, [data])
 
   const marketList = data?.markets || [];
   console.log(marketList);
@@ -138,11 +142,14 @@ export default function HomepageScreen({ onSelect }: HomepageProps) {
     ) || false
 
     const matchesSearch = matchesTitle || matchesCounty || matchesVendor;
-
+ 
     // Filter by category
     const matchesCategory = selectedCategory === '' || (item.categories && item.categories.includes(selectedCategory));
     return matchesSearch && matchesCategory;
   });
+
+  //TEMPORARY!!!!!!!!!!!!
+  const temporary = () => {router.push('/setup')};
 
   return (
     <GestureHandlerRootView style={{flex: 1}}>
@@ -152,7 +159,14 @@ export default function HomepageScreen({ onSelect }: HomepageProps) {
           source={require('../../assets/images/app-logo.png')}
           />
         </View>
-        <Text style={styles.welcomeMessage}>Bem vindo (Nome)!</Text>
+        <TouchableOpacity
+            onPress={temporary}
+        >
+            <Text>
+                Click Me!
+            </Text>
+        </TouchableOpacity>
+        {/**<Text style={styles.welcomeMessage}>Bem vindo (Nome)!</Text> */}
         <View style={styles.searchBar}>
           <SearchBarComponent
             value={searchQuery}

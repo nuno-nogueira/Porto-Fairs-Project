@@ -151,7 +151,7 @@ export default function TabLayout() {
           </View>
           ),
         }}
-      />
+      /> 
     </Tabs>
   );
 }

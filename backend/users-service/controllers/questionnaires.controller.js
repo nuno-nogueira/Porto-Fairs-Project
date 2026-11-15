@@ -54,7 +54,7 @@ exports.getQuestionnaireById = async(req, res) => {
 }
 
 
-// Creates a new questionnaire row
+// Creates a new questionnaire
 exports.createQuestionnaire = async(req, res) => {
      /*
     #swagger.tags = ['Questionnaires'] 
@@ -75,11 +75,6 @@ exports.createQuestionnaire = async(req, res) => {
         // add product_type_id
         const { user_id, current_location } = req.body;
 
-        if (current_location === undefined) {
-            logger.warn('Current location field is required!')
-            return res.status(400).json({ error: 'Current location field is missing.'})
-        }
-
         const new_questionnaire = new db.Questionnaire({ user_id, current_location })
         await new_questionnaire.save();
 
@@ -93,7 +88,7 @@ exports.createQuestionnaire = async(req, res) => {
 }
 
 
-// Edits info in a questionnaire
+// Edits a questionnaire
 exports.editQuestionnaire = async(req, res) => {
      /*
     #swagger.tags = ['Questionnaires'] 

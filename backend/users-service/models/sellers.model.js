@@ -10,7 +10,6 @@ module.exports = (mongoose) => {
 
         description: {
             type: String,
-            required: [true, 'Description cannot be empty or null!'],
             min: [10, "Description must have at least 10 characters"],
             max: [150, "Descriptin cannot have more than 150 characters"]
         },

@@ -14,10 +14,6 @@ require('dotenv').config();
 
 
 // GET all users
-/*⚠️ 
-- fetch other services if necessary
-- check other errors
-*/
 exports.getAllUsers = async(req, res) => {
     /*  
     #swagger.tags = ['Users'] 
@@ -165,12 +161,6 @@ exports.register = async(req, res) => {
         if ( missing_fields.length > 0 ) {
             logger.warn(`All fields are required!`);
             return res.status(400).json({ error: `Missing fields: ${missing_fields.join(', ')}`})
-        }
-
-        if (role === 'buyer' && current_location === undefined) {
-            return res.status(400).json({ error: `Current location is missing!`})
-        } else if (role === 'seller' && description === undefined) {
-            return res.status(400).json({ error: `Description is missing!`})
         }
 
         const existing_user = await db.User.findOne({ email }).exec();

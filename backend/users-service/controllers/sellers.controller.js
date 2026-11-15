@@ -81,11 +81,6 @@ exports.createSeller = async (req, res) => {
         // add product_type_id
         const { user_id, description, avatar } = req.body;
 
-        if (description === undefined) {
-            logger.warn('Description field is required!')
-            return res.status(400).json({ error: 'Description field is missing.' })
-        }
-
         const new_seller = new db.Seller({ user_id, description, avatar })
         await new_seller.save();
 
@@ -100,7 +95,7 @@ exports.createSeller = async (req, res) => {
 }
 
 
-// Edits a seller's info
+// Edits a seller
 exports.editSeller = async (req, res) => {
     /*
     #swagger.tags = ['Sellers'] 

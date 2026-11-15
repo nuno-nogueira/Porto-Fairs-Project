@@ -11,7 +11,6 @@ module.exports = (mongoose) => {
                 type: String,
                 default: null
             },
-            //preferred_product_type: {}
         }
     );
     const Questionnaire = mongoose.model('questionnaire', schema);
