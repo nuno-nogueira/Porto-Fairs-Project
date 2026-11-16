@@ -50,7 +50,6 @@ exports.getSellerById = async (req, res) => {
         return res.status(200).json({
             id: seller.user_id._id,
             full_name: seller.user_id?.full_name,
-            email: seller.user_id?.email,
             description: seller.description,
             avatar: seller.avatar
         })
@@ -115,6 +114,10 @@ exports.editSeller = async (req, res) => {
     try {
         logger.info(`Request: PUT users/sellers/${req.params.id} received!`);
 
+        if (req.params.id !== req.user.id && req.user.role !== "admin") {
+            return res.status(403).json({error: "You are not allowed to modify this seller's profile!"})
+        }
+
         // add product_type_id
         const { description, avatar, alert } = req.body;
 
@@ -150,6 +153,10 @@ exports.deleteSeller = async (req, res) => {
      */
     try {
         logger.info(`Request DELETE /users/sellers/${req.params.id} received!`)
+
+         if (req.params.id !== req.user.id && req.user.role !== "admin") {
+            return res.status(403).json({error: "You are not allowed to delete this seller's profile!"})
+        }
 
         let result = await db.Seller.findOne({ user_id: req.params.id }).deleteOne();
 

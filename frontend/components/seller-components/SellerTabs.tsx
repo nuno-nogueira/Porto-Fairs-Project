@@ -2,17 +2,16 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { MarketCard } from "./MarketCard";
-import { MARKETS } from "@/constants/sellers";
 import { AnnouncementCard } from "./AnnouncementCard";
 
 // Define the props for SellerTabs component
 interface SellerTabsProps {
   about: string;
   posts: { id: string; text: string; date: string }[];
+  isOwner ?: boolean;
 }
 
-export function SellerTabs({ about, posts }: SellerTabsProps) {
+export function SellerTabs({ about, posts, isOwner = false }: SellerTabsProps) {
   // State to handle tab switching
   const [activeTab, setActiveTab] = useState<"about" | "posts">("about");
 
@@ -50,36 +49,19 @@ export function SellerTabs({ about, posts }: SellerTabsProps) {
         {/* Render About Tab */}
         {activeTab === "about" && (
           <View>
-            <Text style={styles.aboutText}>{about}</Text>
-
-            {/* Seller Category Tags */}
-            <View style={styles.categoriesRow}>
-              <View style={styles.categoryBadge}>
-                <MaterialCommunityIcons name="silverware-fork-knife" size={14} color="#9f3d1a" />
-                <Text style={styles.categoryText}>Alimentação</Text>
-              </View>
-
-              <View style={styles.categoryBadge}>
-                <MaterialCommunityIcons name="tshirt-crew" size={14} color="#9f3d1a" />
-                <Text style={styles.categoryText}>Vestuário</Text>
-              </View>
-            </View>
+            <Text style={styles.aboutText}>{about || "Este vendedor ainda não adicionou uma descrição"}</Text>
 
             <Text style={styles.sectionTitle}>Onde me podes encontrar</Text>
-            
-            {/* Market Cards List */}
-            <View style={styles.marketsList}>
-              {MARKETS.map((item) => (
-                <MarketCard key={item.id} market={item} />
-              ))}
-            </View>
+
+            <Text style={styles.emptyText}>Ainda não existem feiras associadas a este vendedor.</Text>
           </View>
         )}
 
         {/* Render Posts Tab */}
         {activeTab === "posts" && (
           <View>
-            {posts.map((post, index) => {
+            {posts.length > 0 ? (
+              posts.map((post, index) => {
               // Grouping logic: check if the date header should be displayed
               const showDateHeader = index === 0 || posts[index - 1].date !== post.date;
 
@@ -93,7 +75,14 @@ export function SellerTabs({ about, posts }: SellerTabsProps) {
                   <AnnouncementCard announce={post} />
                 </View>
               );
-            })}
+            })
+            ): (
+              <Text style={styles.emptyText}>
+                {isOwner 
+                ? "Ainda não publicaste anúncios"
+                : "Este vendedor ainda não publicou anúncios" }
+              </Text>
+            )}
           </View>
         )}
       </View>
@@ -163,25 +152,6 @@ const styles = StyleSheet.create({
     color: "#444",
     marginBottom: 16,
   },
-  categoriesRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 30,
-  },
-  categoryBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FEF2F2",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    gap: 6,
-  },
-  categoryText: {
-    fontSize: 14,
-    color: "#9f3d1a",
-    fontWeight: "500",
-  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
@@ -189,8 +159,10 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     marginLeft: 5,
   },
-  marketsList: {
-    marginTop: 5,
-    marginHorizontal: -8,
-  },
+  emptyText: {
+    fontSize: 14,
+    color: '#858080',
+    fontStyle: 'italic',
+    marginVertical: 12,
+}
 });

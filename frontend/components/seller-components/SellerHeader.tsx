@@ -13,9 +13,10 @@ interface SellerHeaderProps {
   imageUri: any;
   liked: boolean;
   onToggleLike: () => void;
+  showFavorite?: boolean
 }
 
-export function SellerHeader({ vendor, imageUri, liked, onToggleLike }: SellerHeaderProps) {
+export function SellerHeader({ vendor, imageUri, liked, onToggleLike, showFavorite = true }: SellerHeaderProps) {
   const router = useRouter();
   const brandColor = "#c64f23";
   const mutedColor = "#A0AEC0";
@@ -28,9 +29,11 @@ export function SellerHeader({ vendor, imageUri, liked, onToggleLike }: SellerHe
           <Ionicons name="chevron-back" size={32} color={brandColor} />
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.topButton} onPress={onToggleLike}>
-          <Ionicons name={liked ? "heart" : "heart-outline"} size={32} color={brandColor} />
-        </TouchableOpacity>
+        {showFavorite && (
+          <TouchableOpacity style={styles.topButton} onPress={onToggleLike}>
+            <Ionicons name={liked ? "heart" : "heart-outline"} size={32} color={brandColor} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Profile Image Section */}

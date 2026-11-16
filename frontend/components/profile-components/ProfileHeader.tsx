@@ -1,8 +1,6 @@
 import React from 'react';
 import { View, Image, StyleSheet, useColorScheme, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
-// Import components theme
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 

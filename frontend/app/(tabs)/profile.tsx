@@ -31,20 +31,18 @@ import { ThemedView } from "@/components/themed-view";
 
 import { MARKETS, SELLERS, POSTS } from "@/constants/data";
 
-const currentUser = SELLERS[0];
-
 export default function ProfileScreen() {
-  const isSeller = true;
   const colorScheme = useColorScheme() ?? "light";
   const brandColors = Colors[colorScheme];
 
   //states
   const [favoriteMarkets, setFavoriteMarkets] = useState(MARKETS);
-  const [profileImage, setProfileImage] = useState(currentUser.avatar);
+  const [profileImage, setProfileImage] = useState(SELLERS[0].avatar);
   const [announcements, setAnnouncements] = useState(POSTS);
   const [modalVisible, setModalVisible] = useState(false); // control modal visibility
   const [newPostText, setNewPostText] = useState(""); // add new post text
   const {user, loading} = useAuth();
+  const isSeller = user?.role === "seller";
 
   // Pick image from gallery
   const handlePickImage = async () => {
@@ -72,17 +70,16 @@ export default function ProfileScreen() {
     }
 
     const newPost = {
-      id: Date.now(), // Gera um ID único baseado na hora
+      id: Date.now(), 
       text: newPostText,
       date: "Agora mesmo",
     };
 
     setAnnouncements([newPost, ...announcements]);
-    setNewPostText(""); // Limpa o texto
-    setModalVisible(false); // Fecha o modal
+    setNewPostText(""); 
+    setModalVisible(false);
   }
 
-  // 4. Apagar Anúncio
   function deleteAnnouncement(id: number) {
     Alert.alert("Apagar", "Tens a certeza que queres apagar este anúncio?", [
       { text: "Cancelar", style: "cancel" },
@@ -123,12 +120,12 @@ export default function ProfileScreen() {
 
           {/* Profile Component */}
           <ProfileHeader
-            user={currentUser}
-            imageUri={profileImage} // Passa a imagem do estado
-            onEditImage={handlePickImage} // Passa a função de escolher
+            user={{name: user.name, location: user.current_location || "Localização não encontrada"}}
+            imageUri={profileImage} 
+            onEditImage={handlePickImage}
           />
 
-          {/* Button create an announcement */}
+          {/* "Create an announcement" button */}
           {isSeller && (
             <View style={{ marginTop: 10 }}>
               <PrimaryButton

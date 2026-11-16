@@ -60,6 +60,61 @@ exports.getAllUsers = async(req, res) => {
 }
 
 
+// GET authenticated user's information
+exports.getCurrentUser = async(req, res) => {
+    /*  
+    #swagger.tags = ['Users'] 
+    #swagger.responses[200] = { description: 'User found successfully', schema: { $ref: '#/definitions/GetUser'} } 
+    #swagger.responses[401] = { description: 'No access token provided'}
+    #swagger.responses[404] = { description: 'User was not found' } 
+    #swagger.responses[500] = { description: 'Failed to fetch users'}
+    */
+    try {
+        logger.info("Request: GET /me received!");
+
+        const userId = req.user.id;
+
+        if (!userId) return res.status(401).json({error: "Invalid authentication token"});
+
+        // Retrieve main information (full name, email and role)
+        const user = await db.User.findById(userId)
+            .select("_id full_name email role")
+            .lean()
+            .exec();
+
+        if (!user) return res.status(404).json({error: `User with ID ${userId} not found`});
+
+        let seller = null;
+        let questionnaire = null;
+
+        // Retrieve information associated to the user's role (buyer / seller)
+        if (user.role === "seller") {
+            
+            seller = await db.Seller.findOne({user_id: user._id}) 
+                .select("description avatar alert -_id")
+                .lean()
+                .exec();
+        } else {
+
+            questionnaire = await db.Questionnaire.findOne({user_id: user._id})
+                .select("current_location -_id")
+                .lean()
+                .exec();
+        }
+
+        logger.info(`Authenticated user with ID ${userId} retrieved sucessfully!`)
+
+        return res.status(200).json({user, seller, questionnaire});
+
+    } catch (err) {
+
+        logger.error(`Error retrieving authenticated user with ID ${userId}: ${err.message}`);
+
+        return res.status(500).json({error: "Failed to retrieeve authenticated user."});
+    }
+}
+
+
 // GET an user by ID 
 exports.getUserById = async(req, res) => {
     /*  

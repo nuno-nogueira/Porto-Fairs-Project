@@ -1,5 +1,6 @@
 import React, {  createContext, useContext, useState, useEffect, ReactNode } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";   
+import AsyncStorage from "@react-native-async-storage/async-storage";  
+import * as SecureStore from "expo-secure-store"; 
 import api from "@/api/axios";
 import { parse } from "graphql";
 
@@ -8,6 +9,8 @@ interface User {
     name: string;
     email: string;
     role: string;
+    current_location: string | null;
+    description: string | null;
 }
 
 interface RegisterPayload {
@@ -19,7 +22,20 @@ interface RegisterPayload {
     description ?: string;
 }
 
-interface AuthContext {
+interface BackendUser {
+    _id: string;
+    full_name: string;
+    email: string;
+    role: string;
+}
+
+interface CurrentUserResponse {
+    user: BackendUser;
+    seller: {description ?: string | null} | null;
+    questionnaire: {current_location ?: string | null} | null;
+}
+
+interface AuthContextType {
     user: User | null;
     loading: boolean;
     
@@ -35,7 +51,54 @@ interface AuthContext {
     logout: () => Promise<void>;
 };
 
-const authContext = createContext<AuthContext|undefined>(undefined);
+const TOKEN_KEY = "token";
+
+const authContext = createContext<AuthContextType | undefined>(undefined);
+
+const mapBasciUser = (backendUser: BackendUser): User => ({
+    _id: backendUser._id,
+    name: backendUser.full_name,
+    email: backendUser.email,
+    role: backendUser.role,
+    current_location: null,
+    description: null
+})
+
+// Include additional information based on the user's role
+const mapCurrentUser = (response: CurrentUserResponse): User => ({
+    ...mapBasciUser(response.user),
+    current_location: response.questionnaire?.current_location ?? null,
+    description: response.seller?.description ?? null
+})
+
+const getStoredToken = async(): Promise<string | null> => {
+    const secureToken = await SecureStore.getItemAsync(TOKEN_KEY);
+
+    if (secureToken) {
+        await AsyncStorage.multiRemove(["token", "user"]);
+        return secureToken;
+    }
+
+    const oldToken = await AsyncStorage.getItem(TOKEN_KEY);
+
+    if (oldToken) {
+        await SecureStore.setItemAsync(TOKEN_KEY, oldToken);
+        await AsyncStorage.multiRemove(["token", "user"]);
+
+        return oldToken;
+    }
+
+    return null;
+}
+
+const clearStoredSession = async() => {
+    await SecureStore.deleteItemAsync(TOKEN_KEY);
+    await AsyncStorage.multiRemove(["token", "user"]);
+};
+
+const getErrorStatus = (error: unknown): number | undefined => {
+    return (error as {response?: {status ?: number}})?.response?.status;
+}
 
 export const AuthProvider = ({ children }: { children: ReactNode}) => {
 
@@ -47,24 +110,26 @@ export const AuthProvider = ({ children }: { children: ReactNode}) => {
 
         const loadUser = async () => {
             try {
-                const [token, storedUser] = await Promise.all([
-                    AsyncStorage.getItem('token'),
-                    AsyncStorage.getItem('user')
-                ])
+                const token = await getStoredToken();
 
-                if (!token || !storedUser) {
-                    await AsyncStorage.multiRemove(['token', 'user']);
-                    return;
-                }
+                if (!token) return;
 
-                const parsedUser: User = JSON.parse(storedUser);
+                const response = await api.get<CurrentUserResponse>("/users/me");
 
-                if (isMounted) setUser(parsedUser);
+                if (!response.data?.user) throw new Error("Invalid user response from server.");
+
+                if (isMounted) setUser(mapCurrentUser(response.data));
 
             } catch (err) {
-                console.warn("Não foi possível carregar o user:", err);
-                await AsyncStorage.multiRemove(['token', 'user']);
-                if (isMounted) setUser(null);
+                const status = getErrorStatus(err);
+
+                if ([401, 403, 404].includes(status ?? 0)) {
+                    await clearStoredSession();
+
+                    if (isMounted) setUser(null);
+                } else {
+                    console.warn("Couldn't validate the stored session ->", err);
+                }
 
             } finally {
                 if (isMounted) setLoading(false); 
@@ -86,27 +151,34 @@ export const AuthProvider = ({ children }: { children: ReactNode}) => {
         const backendUser = response.data.user;
         const accessToken = response.data.accessToken;
 
-        if (!backendUser || !accessToken) throw new Error("Resposta de autenticação inválida!");
+        if (!backendUser || !accessToken) throw new Error("Invalid authentication response");
 
-        const authenticatedUser: User = {
-            _id: backendUser._id,
-            name: backendUser.full_name,
-            email: backendUser.email,
-            role: backendUser.role
+        await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
+        await AsyncStorage.multiRemove(["token", "user"]);
+
+        setUser(mapBasciUser(backendUser));
+
+        try {
+            const profileResponse = await api.get<CurrentUserResponse>("/users/me");
+
+            setUser(mapCurrentUser(profileResponse.data));
+        } catch (err) {
+            const status = getErrorStatus(err);
+
+            if ([401, 403, 404].includes(status ?? 0)) {
+                await clearStoredSession();
+                setUser(null);
+                throw err;
+            }
+
+            console.warn("Couldn't retrieve complete user profile ->", err);
+            
         }
-
-        await AsyncStorage.multiSet([
-            ['token', accessToken],
-            ['user', JSON.stringify(authenticatedUser)]
-        ]);
-
-        setUser(authenticatedUser);
     };
 
     const register = async (payload: RegisterPayload) => {
         const requestBody: RegisterPayload = {...payload};
 
-        console.log('test 2 passed')
         // Optional fields
         if (!requestBody.current_location?.trim()) delete requestBody.current_location;
         if (!requestBody.description?.trim()) delete requestBody.description;
@@ -116,7 +188,7 @@ export const AuthProvider = ({ children }: { children: ReactNode}) => {
 
 
     const logout = async () => {
-        await AsyncStorage.multiRemove(['token', 'user']);
+        await clearStoredSession();
         setUser(null);
     };
 

@@ -1,5 +1,5 @@
 import React,  { useState, useEffect } from 'react';
-import { StyleSheet, Image, View, TouchableOpacity, FlatList, Text, Button } from 'react-native';
+import { StyleSheet, Image, View, TouchableOpacity, FlatList, Text, Button, Alert } from 'react-native';
 import { ThemedView } from '@/components/themed-view';
 import { categoryIcons } from './categoryIcons';
 import { useQuery } from '@apollo/client/react';
@@ -11,6 +11,7 @@ import FairList from '@/components/homepage-components/FairList';
 import categories from '../data/categories.json';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
+import { useAuth } from '@/context/AuthContext';
 
 // Query resolver 'markets'
 const GET_MARKETS = gql`
@@ -59,6 +60,9 @@ interface HomepageProps {
 export default function HomepageScreen({ onSelect }: HomepageProps) {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
+
+  const {user, logout, loading: authLoading } = useAuth();
+
   const { data, loading, error } = useQuery<{ markets: FairItem[] }>(GET_MARKETS);
 
   console.log("Status Query:", { loading, error: error?.message, count: data?.markets?.length });
@@ -151,6 +155,15 @@ export default function HomepageScreen({ onSelect }: HomepageProps) {
   //TEMPORARY!!!!!!!!!!!!
   const temporary = () => {router.push('/setup')};
 
+  const handleLogout = async() => {
+    try {
+      await logout();
+      Alert.alert("Logout", "Sessão terminada com sucesso.")
+    } catch (err) {
+      Alert.alert("Erro", "Não foi possível terminar a sessão. Tente outra vez!")
+    }
+  }
+
   return (
     <GestureHandlerRootView style={{flex: 1}}>
       <ThemedView style={styles.container}>
@@ -159,6 +172,31 @@ export default function HomepageScreen({ onSelect }: HomepageProps) {
           source={require('../../assets/images/app-logo.png')}
           />
         </View>
+
+        {!authLoading && (
+          <View style={styles.userWelcomeContainer}>
+            {user ? (
+              <>
+                <Text style={styles.welcomeMessage}>
+                  Olá {user.name}!
+                </Text>
+
+                <TouchableOpacity
+                  style={styles.logoutButton}
+                  onPress={handleLogout}>
+                  <Text style={styles.logoutButtonText}>
+                    Terminar sessão
+                  </Text>
+                </TouchableOpacity>
+              </>) 
+            : (<>
+              <Text style={styles.welcomeMessage}>
+                Olá, visitante!
+              </Text>
+            </>) }
+          </View>
+        )}
+
         <TouchableOpacity
             onPress={temporary}
         >
@@ -253,16 +291,27 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontWeight: 'bold',
   },
+
+  // TEMPORARY!!!!!!!!!!!!!!!!!!!!!!!
+  userWelcomeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    marginVertical: 10,
+},
+
+logoutButton: {
+    backgroundColor: '#C64F23',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 7,
+},
+
+logoutButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+},
 });
-
-// import React from 'react';
-// import { View, Text } from 'react-native';
-
-// export default function Home() {
-//     return (
-//         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-//             <Text>Olá</Text>
-//         </View>
-//     );
-// }
 

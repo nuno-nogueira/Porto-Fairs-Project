@@ -8,6 +8,7 @@ const user_controller = require('../controllers/users.controller.js');
 
 router.get("/users", auth_controller.authenticateToken, auth_controller.authorizeRole("admin"), user_controller.getAllUsers);
 router.get("/users/:id", auth_controller.authenticateToken, user_controller.getUserById);
+router.get("/me", auth_controller.authenticateToken, user_controller.getCurrentUser);
 
 router.post("/register", user_controller.register);
 router.post("/login", user_controller.login);
