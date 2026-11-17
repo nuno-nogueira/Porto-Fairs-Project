@@ -3,11 +3,13 @@ import { View, StyleSheet, ScrollView, ActivityIndicator, Text, Alert } from "re
 import { Stack, useLocalSearchParams, useRouter } from "expo-router"; 
 import api from '@/api/axios';
 import { useAuth } from '@/context/AuthContext';
+import { gql } from "@apollo/client";
+import { useQuery } from "@apollo/client/react";
+import axios from "axios";
 
 // Component imports
 import { SellerHeader } from "@/components/seller-components/SellerHeader";
-import { SellerTabs } from "@/components/seller-components/SellerTabs";
-import axios from "axios";
+import { SellerTabs, type SellerMarket } from "@/components/seller-components/SellerTabs";
 
 interface PublicSeller {
   id: string,
@@ -22,6 +24,23 @@ interface SellerResult {
   seller: PublicSeller | null;
   error: string | null;
 }
+
+interface MarketsBySellerData {
+  marketsBySeller: SellerMarket[];
+}
+
+const GET_MARKETS_BY_SELLER = gql`
+  query GetMarketsBySeller($sellerId: ID!) {
+    marketsBySeller(sellerId: $sellerId) {
+      id
+      name
+      address
+      openingHours
+      imageUrl
+      categories
+    }
+  }
+  `;
 
 
 const VendorPage = () => {
@@ -81,6 +100,16 @@ const VendorPage = () => {
 
   const error = !id ? "ID de vendedor inválido" : currentResult?.error;
 
+  const {
+    data: marketsData,
+    loading: marketsLoading,
+    error: marketsQueryError,
+  } = useQuery<MarketsBySellerData>(GET_MARKETS_BY_SELLER, {
+    variables: {sellerId: id}, skip: !id || !seller, fetchPolicy: "cache-and-network"
+  })
+
+  const SellerMarkets = marketsData?.marketsBySeller ?? [];
+
   if (authLoading || sellerLoading) {
     return (
       <View style={styles.centerContainer}>
@@ -113,7 +142,7 @@ const VendorPage = () => {
       Alert.alert(
         "Iniciar Sessão", 
         "Precisas de ter uma conta para adicionar vendedores como favoritos.",
-        [
+        [         
           {
             text: "Cancelar",
             style: "cancel"
@@ -121,8 +150,8 @@ const VendorPage = () => {
           {
             text: "Iniciar Sessão",
             onPress: () => router.push("/login")
-          },
-          {
+          },                                    
+          {                         
             text: "Criar Conta",
             onPress: () => router.push("/signup")
           }
@@ -160,6 +189,9 @@ const VendorPage = () => {
             about={seller.description || ""}
             posts={[]}
             isOwner={isOwner}
+            markets={SellerMarkets}
+            marketsLoading={marketsLoading}
+            marketsError={!!marketsQueryError}
           />
       </ScrollView>
       

@@ -26,6 +26,17 @@ const resolvers = {
                 throw new Error("Market not found");
             }
         },
+        marketsBySeller: async(_, { sellerId }) => {
+            try {
+                logger.info(`Fetching markets for seller with ID ${sellerId}`)
+
+                return await db.Market.find({sellers: sellerId});
+            } catch (err) {
+                logger.error(`Failed to fetch markets for seller ${sellerId}: ${err.message}`);
+
+                throw new Error("Error fetching markets for seller");
+            }
+        }
     },
     Market: {
         //connect to users-service to get sellers info

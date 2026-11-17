@@ -33,6 +33,7 @@ type Market {
   type Query {
     markets: [Market!]!
     market(id: ID!): Market
+    marketsBySeller(sellerId: ID!): [Market!]!
   }
   type Mutation {
     addMarket(
