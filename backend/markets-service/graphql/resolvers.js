@@ -87,6 +87,22 @@ const resolvers = {
             }
         },
     },
+
+    Rating: {
+        full_name: async(rating) => {
+            try {
+                const response = await axios.get(`${process.env.USERS_SERVICE_URL || "http://users-service:3000"}/users/public/${rating.user_id}`);
+
+                return response.data.full_name || "Utilizador";
+
+            } catch (err) {
+                logger.error(`Failed to retrieve reviewer ${rating.user_id}: ${error.message}`)
+
+                return "Utilizador";
+            }
+        }
+    },
+
     Mutation: {
         addMarket: async (_, args, context) => {
             try {

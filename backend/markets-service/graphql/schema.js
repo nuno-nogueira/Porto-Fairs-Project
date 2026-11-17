@@ -10,6 +10,7 @@ type Market {
     longitude: Float!           
     openingHours: String!       
     categories: [String!]!   
+    iconKey: String
     
     # Relations
     sellers: [Seller!]!  
@@ -27,6 +28,7 @@ type Market {
   type Rating {
     id: ID!
     user_id: String!
+    full_name: String!
     rating: Int!
     comment: String
   }
@@ -45,6 +47,7 @@ type Market {
       longitude: Float!, 
       openingHours: String!,
       categories: [String!]!,
+      iconKey: String,
       sellers: [String!]!): Market
       
 

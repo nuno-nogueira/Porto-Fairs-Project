@@ -1,41 +1,63 @@
-import React from 'react';
-import { Image, StyleSheet, TouchableOpacity, useColorScheme } from 'react-native';
+import React, { useState } from 'react';
+import { Image, StyleSheet, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 // theme imports
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 
 export interface SellerItemData {
-  id: number;
-  name: string;
-  avatar: string;
+  id: string;
+  full_name: string;
+  avatar: string | null;
 }
 
 interface SellerCardProps {
   item: SellerItemData;
-  onPress?: (item: SellerItemData) => void;
+  onPress ?: (item: SellerItemData) => void;
 }
 
 export function SellerCard({ item, onPress }: SellerCardProps) {
-    //  current theme 
     const theme = useColorScheme() ?? 'light';
     const backgroundColor = Colors[theme].background;
+
+    const [imageError, setImageError] = useState(false);
   
   return (
     <TouchableOpacity 
       style={styles.container} 
       activeOpacity={0.8}
-      onPress={() => onPress && onPress(item)}
+      onPress={() => onPress?.(item)}
     >
+      {item.avatar && !imageError ? (
+        <Image
+          source={{ uri: item.avatar }}
+          style={[styles.avatar, { borderColor: backgroundColor }]}
+          onError={() => setImageError(true)}
+        />
+      ) : (
+        <View
+          style={[
+            styles.avatar,
+            styles.avatarFallback,
+            { borderColor: backgroundColor },
+          ]}
+        >
+          <Ionicons
+            name="person"
+            size={32}
+            color="#A0A0A0"
+          />
+        </View>
+      )}
 
-      <Image 
-        source={{ uri: item.avatar }} 
-        style={[styles.avatar, { borderColor: backgroundColor }]} 
-      />
-      
-      <ThemedText style={styles.name} numberOfLines={2} type="small">
-        {item.name}
+      <ThemedText
+      style={styles.name}
+      numberOfLines={2}
+      type='small'>
+        {item.full_name}
       </ThemedText>
+      
     </TouchableOpacity>
   );
 }
@@ -53,6 +75,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#eee', 
     marginBottom: 8,
     borderWidth: 2,
+  },
+  avatarFallback: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   name: {
     textAlign: 'center',

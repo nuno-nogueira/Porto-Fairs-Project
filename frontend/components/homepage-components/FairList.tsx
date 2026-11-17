@@ -7,10 +7,18 @@ import { categoryIcons } from '@/app/(tabs)/categoryIcons';
 // maps categoryIcons.ts to DB
 const categoryToIcon: { [key: string]: string } = {
     "Alimentação": "alimentacao",
+    "Peixaria": "alimentacao",
+    "Gourmet": "alimentacao",
+
     "Vestuário": "artesanato",
+    "Artesanato": "artesanato",
+    "Decoração": "artesanato",
+
     "Velharias": "velharias",
+
     "Cultura": "cultura",
-    // Fallback caso venha algo diferente
+    "Turismo": "cultura",
+    
     "default": "cultura" 
 };
 
@@ -71,7 +79,7 @@ const Item = ({id, title, schedule, address, iconKey}: ItemProps) => {
                 source={require('../../assets/images/fair-default-image.png')}
             />
         </View>
-        <View>
+        <View style={styles.cardContent}>
             <View style={{flexDirection: 'row'}}>
                 <Text style={styles.schedule}>{schedule}</Text>
                 <TouchableOpacity onPress={handleFavorite} style={{position: 'absolute'}}>
@@ -88,7 +96,10 @@ const Item = ({id, title, schedule, address, iconKey}: ItemProps) => {
             </View>
             <View style={styles.categoriesDiv}>
                 <View style={styles.categoryIcon}>
-                    <Image source={categoryIcons[iconKey]} />
+                    <Image
+                        source={categoryIcons[iconKey] || categoryIcons.default}
+                        style={{ width: 18, height: 18, resizeMode: "contain"}}
+                    />
                 </View>
             </View>
         </View>
@@ -98,25 +109,38 @@ const Item = ({id, title, schedule, address, iconKey}: ItemProps) => {
 
 // Fair List Component Definition
 export default function FairList({ data, onSelect }: MapListViewProps) {
-    return(
-        <FlatList<FairItem> 
-        data= {data}
-        renderItem={({item}: {item: FairItem}) => 
-        <Item
-            id={item.id}
-            title={item.name} 
-            schedule={item.openingHours} 
-            address={item.address}
-            category={item.categories?.[0]}
-            iconKey={item.iconKey || 'default'}
-            onPress={() => {router.push(`/market/${item.id}`)}}   
-        />}
-        keyExtractor={(item: FairItem) => item.id}
+    return (
+        <FlatList<FairItem>
+            data={data}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => {
+                const category = item.categories?.[0] || "default";
+
+                const iconKey =
+                    categoryToIcon[category] || categoryToIcon.default;
+
+                return (
+                    <Item
+                        id={item.id}
+                        title={item.name}
+                        schedule={item.openingHours}
+                        address={item.address}
+                        category={category}
+                        iconKey={iconKey}
+                        onPress={() => onSelect(item)}
+                    />
+                );
+            }}
         />
-    )
+    );
 }
 
 const styles = StyleSheet.create({
+    cardContent: {
+        flex: 1,
+        minWidth: 0,
+        paddingRight: 0
+    },
     image: {
         borderTopLeftRadius: 15,
         borderTopRightRadius: 15,
@@ -149,7 +173,9 @@ const styles = StyleSheet.create({
         fontSize: 16,
         padding: 5,
         marginLeft: 10,
-        marginTop: 5
+        marginTop: 5,
+        flexShrink: 1,
+        flexWrap: 'wrap'
     },
     locationIcon: {
         marginLeft: 12,
@@ -170,9 +196,9 @@ const styles = StyleSheet.create({
     categoryIcon: {
         width: 30,
         height: 30,
-        padding: 5,
+        padding: 12,
         borderColor: '#C64F23',
-        borderWidth: 1,
+        borderWidth: 0.5,
         borderRadius: 20,
         alignItems: 'center',
         justifyContent: 'center'

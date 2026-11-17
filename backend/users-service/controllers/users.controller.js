@@ -60,6 +60,53 @@ exports.getAllUsers = async(req, res) => {
 }
 
 
+// GET public information of an user
+exports.getPublicUserById = async(req, res) => {
+     /*  
+    #swagger.tags = ['Users'] 
+    #swagger.responses[200] = { description: 'User found successfully', schema: { $ref: '#/definitions/GetUser'} } 
+    #swagger.responses[400] = { description: 'Invalid User ID'}
+    #swagger.responses[404] = { description: 'User not found' }
+    #swagger.responses[500] = { description: 'Failed to fetch users'}
+    */
+    try {
+        const { id } = req.params;
+
+        logger.info(`Request: GET /users/public/${id} received!`);
+
+        // Validate ObjectID format
+        if (!/^[a-fA-F0-9]{24}$/.test(id)) {
+            return res.status(400).json({
+                error: "Invalid user ID."
+            });
+        }
+
+        const user = await db.User.findById(id)
+            .select("_id full_name")
+            .lean()
+            .exec();
+
+        if (!user) {
+            return res.status(404).json({
+                error: "User not found."
+            });
+        }
+
+        return res.status(200).json({
+            id: user._id.toString(),
+            full_name: user.full_name
+        });
+        
+    } catch (err) {
+        logger.error(`Error retrieving public uesr, ${err.message}`);
+
+        return res.status(500).json({
+            error: "Failed to retrieve public user information"
+        })
+    }
+}
+
+
 // GET authenticated user's information
 exports.getCurrentUser = async(req, res) => {
     /*  

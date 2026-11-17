@@ -33,6 +33,11 @@ export default (mongoose) => {
         type: [String], 
         required: [true, 'At least one category is required!'] 
       },
+      iconKey: {
+        type: String,
+        enum: ["alimentacao", "artesanato", "velharias", "cultura"],
+        default: "cultura"
+    },
       sellers: { type: [String], default: [] },
       //ratings: [{ userId: String, rating: Number }]
     },

@@ -13,7 +13,7 @@ import { useAuth } from '@/context/AuthContext';
 import { SetupProvider } from '@/context/SetupContext';
 
 const httpLink = createHttpLink({
-  uri: 'http://192.168.43.145:4000/graphql',
+  uri: `http://${process.env.EXPO_PUBLIC_HOST}:8080/api/markets`,
 });
 
 const client = new ApolloClient({
