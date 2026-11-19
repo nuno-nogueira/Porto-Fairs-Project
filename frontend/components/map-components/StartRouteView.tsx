@@ -4,7 +4,7 @@ import { View, Text, StyleSheet, Image, TouchableOpacity, ImageSourcePropType } 
 import { Ionicons } from '@expo/vector-icons';
 
 // Item Definitions
-interface FairItem {id: number, title: string; schedule: string; address: string}
+interface FairItem {id: number | string, title: string; schedule: string; address: string}
 type TransportMode = "driving" | "walking" | "transit";
 interface RouteData {
     driving?: { distance: string; duration: string; arrivalTime: string};

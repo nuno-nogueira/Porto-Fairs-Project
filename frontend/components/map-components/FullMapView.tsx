@@ -4,7 +4,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, ImageSourcePropType } 
 
 
 // Item Definition
-interface FairItem {id: number, title: string; schedule: string; address: string}
+interface FairItem {id: string | number, title: string; schedule: string; address: string}
 interface RouteData {
     driving?: { distance: string; duration: string; arrivalTime: string};
     walking?: { distance: string, duration: string};
