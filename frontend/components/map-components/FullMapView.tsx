@@ -1,15 +1,30 @@
-// Imports
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ImageSourcePropType } from 'react-native';
-
+import React from 'react';
+import {
+    View,
+    Text,
+    StyleSheet,
+    TouchableOpacity,
+    Image,
+    ImageSourcePropType,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 // Item Definition
-interface FairItem {id: string | number, title: string; schedule: string; address: string}
-interface RouteData {
-    driving?: { distance: string; duration: string; arrivalTime: string};
-    walking?: { distance: string, duration: string};
-    transit?: { distance: string, duration: string};
+interface FairItem {
+    id: string | number;
+    title: string;
+    schedule: string;
+    address: string;
 }
+
+type TransportMode = 'driving' | 'walking' | 'transit';
+
+interface RouteData {
+    driving?: { distance: string; duration: string; arrivalTime: string };
+    walking?: { distance: string; duration: string };
+    transit?: { distance: string; duration: string };
+}
+
 interface FullMapViewProps {
     fair: FairItem;
     onEndRoute: () => void;
@@ -17,199 +32,404 @@ interface FullMapViewProps {
     selectedMode: TransportMode;
     onModeChange: (mode: TransportMode) => void;
 }
-type TransportMode = 'driving' | 'walking' | 'transit';
 
+interface TransportOption {
+    mode: TransportMode;
+    icon: ImageSourcePropType;
+    duration: string;
+}
 
-export default function FullMap({ onEndRoute, routeInfo, selectedMode, onModeChange }: FullMapViewProps) {
-    const drivingDuration = routeInfo?.driving?.duration || '....';
-    const walkingDuration = routeInfo?.walking?.duration || '....';
-    const transitDuration = routeInfo?.transit?.duration || '....';
+// Static route information
+const STATIC_ROUTE_INFO: Record<
+    TransportMode,
+    { duration: string; distance: string; arrivalTime: string }
+> = {
+    walking: {
+        duration: '25 min',
+        distance: '3,2 km',
+        arrivalTime: 'Chegada às 12:58',
+    },
+    driving: {
+        duration: '12 min',
+        distance: '3,6 km',
+        arrivalTime: 'Chegada às 12:45',
+    },
+    transit: {
+        duration: '30 min',
+        distance: '4,2 km',
+        arrivalTime: 'Chegada às 13:03',
+    },
+};
 
-    const displayedRoute = useMemo(() => {
-        const data = routeInfo?.[selectedMode];
+// Transport options
+const transportOptions: TransportOption[] = [
+    {
+        mode: 'walking',
+        icon: require('../../assets/map-icons/walk-icon.png'),
+        duration: STATIC_ROUTE_INFO.walking.duration,
+    },
+    {
+        mode: 'driving',
+        icon: require('../../assets/map-icons/car-icon.png'),
+        duration: STATIC_ROUTE_INFO.driving.duration,
+    },
+    {
+        mode: 'transit',
+        icon: require('../../assets/map-icons/bus-icon.png'),
+        duration: STATIC_ROUTE_INFO.transit.duration,
+    },
+];
 
-        const duration = data?.duration || '...';
-        const distance = data?.distance || '...';
+export default function FullMap({
+    fair,
+    onEndRoute,
+    selectedMode,
+    onModeChange,
+}: FullMapViewProps) {
+    // Static information for the selected transport mode
+    const displayedRoute = STATIC_ROUTE_INFO[selectedMode];
 
-        const arrivalTime = (data && 'arrivalTime' in data) ? data.arrivalTime : 'N/A';
+    // Render transport selection buttons
+    const renderTransportButton = (
+        mode: TransportMode,
+        icon: ImageSourcePropType,
+        duration: string,
+    ) => {
+        const isSelected = selectedMode === mode;
 
-        return {duration, distance, arrivalTime}
-    }, [selectedMode, routeInfo])
-    
-
-    const renderTransportButton = (mode: TransportMode, icon: ImageSourcePropType, duration: string) => (
-        <TouchableOpacity
-            style={[
-                styles.distanceSection,
-                selectedMode === mode && styles.selectedMode
-            ]}
-            onPress={() => onModeChange(mode)}
-            activeOpacity={0.7}
-        >
-            <Image
-                source={icon}
+        return (
+            <TouchableOpacity
+                key={mode}
                 style={[
-                    styles.iconStyle,
-                    selectedMode === mode && styles.iconActive
+                    styles.distanceSection,
+                    isSelected && styles.selectedMode,
                 ]}
-            />
-            <Text
-                style={[
-                    styles.durationText,
-                    selectedMode === mode && styles.durationActiveText
-                ]}
+                onPress={() => onModeChange(mode)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isSelected }}
             >
-                {duration}
-            </Text>
-        </TouchableOpacity>
-    )
-    
-    return(
+                <Image
+                    source={icon}
+                    style={[
+                        styles.iconStyle,
+                        isSelected && styles.iconActive,
+                    ]}
+                    resizeMode="contain"
+                />
+
+                <Text
+                    style={[
+                        styles.durationText,
+                        isSelected && styles.durationActiveText,
+                    ]}
+                >
+                    {duration}
+                </Text>
+            </TouchableOpacity>
+        );
+    };
+
+    return (
         <View style={styles.container}>
+            {/* Route information */}
             <View style={styles.detailsColumn}>
-                <Text style={styles.mainDurationText}>{displayedRoute.duration}</Text>
-                <View style={styles.routeDetails}>
-                    <Text style={styles.detailText}>{displayedRoute.distance}</Text>
-                    <View style={styles.detailSeparator}></View>
-                    <Text style={styles.detailText}>{displayedRoute.arrivalTime}</Text>
+
+                {/* Destination and main duration */}
+                <View style={styles.destinationHeader}>
+                    <View style={styles.destinationInfo}>
+                        <Text style={styles.destinationLabel}>
+                            A caminho de...
+                        </Text>
+
+                        <Text
+                            style={styles.destinationTitle}
+                            numberOfLines={1}
+                        >
+                            {fair.title}
+                        </Text>
+                    </View>
+
+                    <Text style={styles.mainDurationText}>
+                        {displayedRoute.duration}
+                    </Text>
                 </View>
 
-                <View style={styles.transportContainer}> 
-                    <View style={styles.distanceInfo}>
-                        {renderTransportButton('walking', require('../../assets/map-icons/walk-icon.png'), walkingDuration)}
-                        {renderTransportButton('driving', require('../../assets/map-icons/car-icon.png'), drivingDuration)}
-                        {renderTransportButton('transit', require('../../assets/map-icons/bus-icon.png'), transitDuration)}
+                {/* Distance and arrival information */}
+                <View style={styles.routeDetails}>
+                    <View style={styles.detailItem}>
+                        <Ionicons
+                            name="navigate-outline"
+                            size={15}
+                            color="#7A716E"
+                        />
+
+                        <Text style={styles.detailText}>
+                            {displayedRoute.distance}
+                        </Text>
                     </View>
+
+                    <View style={styles.detailSeparator} />
+
+                    <View style={styles.detailItem}>
+                        <Ionicons
+                            name="time-outline"
+                            size={15}
+                            color="#7A716E"
+                        />
+
+                        <Text style={styles.detailText}>
+                            {displayedRoute.arrivalTime}
+                        </Text>
+                    </View>
+                </View>
+
+                {/* Transport options */}
+                <View style={styles.transportContainer}>
+                    <View style={styles.distanceInfo}>
+                        {transportOptions.map(option =>
+                            renderTransportButton(
+                                option.mode,
+                                option.icon,
+                                option.duration,
+                            ),
+                        )}
+                    </View>
+
+                    {/* Selected transport indicator */}
                     <View style={styles.line}>
-                        {selectedMode === 'walking' && <View style={[styles.activeLineBase, styles.activeLineWalking]} />}
-                        {selectedMode === 'driving' && <View style={[styles.activeLineBase, styles.activeLineDriving]} />}
-                        {selectedMode === 'transit' && <View style={[styles.activeLineBase, styles.activeLineTransit]} />}
+                        {selectedMode === 'walking' && (
+                            <View
+                                style={[
+                                    styles.activeLineBase,
+                                    styles.activeLineWalking,
+                                ]}
+                            />
+                        )}
+
+                        {selectedMode === 'driving' && (
+                            <View
+                                style={[
+                                    styles.activeLineBase,
+                                    styles.activeLineDriving,
+                                ]}
+                            />
+                        )}
+
+                        {selectedMode === 'transit' && (
+                            <View
+                                style={[
+                                    styles.activeLineBase,
+                                    styles.activeLineTransit,
+                                ]}
+                            />
+                        )}
                     </View>
                 </View>
             </View>
-            <View>
-                <TouchableOpacity style={styles.endRouteButton} onPress={onEndRoute}>
-                    <Text style={{color: 'white', fontWeight: 600}}>Sair</Text>
+
+            {/* End route button */}
+            <View style={styles.buttonColumn}>
+                <TouchableOpacity
+                    style={styles.endRouteButton}
+                    onPress={onEndRoute}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Sair da rota"
+                >
+                    <Ionicons
+                        name="close-outline"
+                        size={17}
+                        color="#FFFFFF"
+                    />
+
+                    <Text style={styles.endRouteText}>
+                        Sair
+                    </Text>
                 </TouchableOpacity>
             </View>
         </View>
-    )
+    );
 }
 
 const styles = StyleSheet.create({
+    // Main card
     container: {
-        padding: 20,
+        paddingHorizontal: 16,
+        paddingTop: 13,
+        paddingBottom: 12,
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         width: '100%',
+        gap: 10,
     },
+
     detailsColumn: {
-        flex: 1, 
+        flex: 1,
         flexDirection: 'column',
+        minWidth: 0,
     },
-    buttonColumn: {
-        marginLeft: 20,
-        alignSelf: 'flex-end',
+
+    // Destination and duration
+    destinationHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 8,
     },
+
+    destinationInfo: {
+        flex: 1,
+        minWidth: 0,
+    },
+
+    destinationLabel: {
+        fontSize: 10,
+        color: '#8A807C',
+        fontWeight: '500',
+        marginBottom: 2,
+    },
+
+    destinationTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#302824',
+    },
+
     mainDurationText: {
-        fontSize: 22, 
-        fontWeight: 'bold', 
-        marginLeft: 15
+        fontSize: 19,
+        fontWeight: '800',
+        color: '#C64F23',
     },
+
+    // Route details
     routeDetails: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginLeft: 15,
-        marginTop: 15,
-        columnGap: 10
+        marginTop: 8,
+        gap: 9,
     },
-    transportContainer: { 
-        marginLeft: 15, 
-        marginTop: 20, 
-        width: 300,
-    },
-    distanceInfo: {
-        marginBottom: 10,
-        columnGap: 20,
-        flexDirection: 'row',
-    },
-    line: {
-        width: '100%', 
-        backgroundColor: 'rgba(250, 182, 171, 0.5)',
-    },
-    activeLineBase: { 
-        height: 2,
-        backgroundColor: '#C64F23', 
-    },
-    activeLineWalking: {
-        width: 90,
-        marginLeft: 0,
-    },
-    activeLineDriving: {
-        width: 110,
-        marginLeft: 90,
-    },
-    activeLineTransit: {
-        width: 100,
-        marginLeft: 210, 
-    },
-    detailText: {
-        color: '#7A716E', 
-        fontSize: 18
-    },
-    detailSeparator: {
-        width: 5, 
-        height: 5, 
-        borderRadius: 50, 
-        backgroundColor: '#C64F23'
-    },
-    transportButtonsContainer: {
-        flexDirection: 'row',
-        marginTop: 20,
-        marginLeft: 15,
-        columnGap: 20,
-    },
-    distanceSection: {
+
+    detailItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
+        gap: 4,
+    },
+
+    detailText: {
+        color: '#7A716E',
+        fontSize: 11,
+        fontWeight: '500',
+    },
+
+    detailSeparator: {
+        width: 4,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: '#C64F23',
+    },
+
+    // Transport options
+    transportContainer: {
+        marginTop: 11,
+        width: '100%',
+    },
+
+    distanceInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 5,
+    },
+
+    distanceSection: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 4,
+        paddingVertical: 7,
         borderRadius: 8,
+        backgroundColor: '#F5F0ED',
     },
+
     selectedMode: {
-        backgroundColor: '#FAE8E1'
+        backgroundColor: '#FAE8E1',
     },
+
     iconStyle: {
         tintColor: '#7A716E',
-        width: 18, 
-        height: 18,
+        width: 16,
+        height: 16,
     },
+
     iconActive: {
-        tintColor: '#C64F23', 
+        tintColor: '#C64F23',
     },
+
     durationText: {
         color: '#7A716E',
-        marginLeft: 5,
         fontWeight: '500',
-        fontSize: 14
+        fontSize: 10,
     },
+
     durationActiveText: {
         color: '#C64F23',
-        fontWeight: 'bold',
+        fontWeight: '700',
     },
-    endRouteButton: {
+
+    // Active transport indicator
+    line: {
+        width: '100%',
+        height: 2,
+        backgroundColor: 'rgba(250, 182, 171, 0.5)',
+        position: 'relative',
+        marginTop: 5,
+    },
+
+    activeLineBase: {
+        height: 2,
         backgroundColor: '#C64F23',
-        margin: 'auto',
-        width: 90,
-        height: 35,
-        marginBottom: 30,
-        marginLeft: 60,
+        position: 'absolute',
+        top: 0,
+    },
+
+    activeLineWalking: {
+        width: '33.33%',
+        left: 0,
+    },
+
+    activeLineDriving: {
+        width: '33.33%',
+        left: '33.33%',
+    },
+
+    activeLineTransit: {
+        width: '33.33%',
+        left: '66.66%',
+    },
+
+    // End route button
+    buttonColumn: {
         justifyContent: 'center',
         alignItems: 'center',
-        borderTopLeftRadius: 6,
-        borderTopRightRadius: 6,
-        borderBottomLeftRadius: 6,
-        borderBottomRightRadius: 6,
     },
-})
+
+    endRouteButton: {
+        backgroundColor: '#C64F23',
+        width: 66,
+        height: 40,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        flexDirection: 'row',
+        gap: 2,
+    },
+
+    endRouteText: {
+        color: '#FFFFFF',
+        fontWeight: '700',
+        fontSize: 12,
+    },
+});

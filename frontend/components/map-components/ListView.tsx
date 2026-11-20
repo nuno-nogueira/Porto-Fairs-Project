@@ -4,6 +4,7 @@ import {
   View,
   StyleSheet,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import {
   BottomSheetFlatList,
@@ -31,6 +32,8 @@ interface MapLIstItem {
 interface MapListViewProps {
     data: MapLIstItem[];
     onSelect: (item: MapLIstItem) => void;
+    loading: boolean;
+    error: boolean;
 }
 
 interface ItemProps {
@@ -90,23 +93,38 @@ const Item = ({ item, onPress }: ItemProps) => {
     );
 };
 
-export default function MapListView({data, onSelect}: MapListViewProps) {
-    return (
-        <BottomSheetFlatList
-            data={data}
-            renderItem={({ item }) => (
-                <Item item={item} onPress={onSelect} />
-            )}
-            keyExtractor={(item) => item.id.toString()}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.listContent}
-            ListEmptyComponent={
-                <Text style={styles.emptyText}>
-                    Não foram encontradas feiras nesta categoria.
-                </Text>
-            }
-        />
-    );
+export default function MapListView({data, onSelect, loading, error}: MapListViewProps) {
+  return (
+    <BottomSheetFlatList
+      data={data}
+      renderItem={({ item }) => (
+        <Item item={item} onPress={onSelect} />
+      )}
+      keyExtractor={(item) => item.id.toString()}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.listContent}
+      ListEmptyComponent={
+        <View style={styles.emptyContainer}>
+          {loading ? (
+            <>
+              <ActivityIndicator size="large" color="#C64F23" />
+              <Text style={styles.emptyText}>
+                A carregar feiras...
+              </Text>
+            </>
+          ) : error ? (
+            <Text style={styles.emptyText}>
+              Não foi possível carregar as feiras. Tenta novamente.
+            </Text>
+          ) : (
+            <Text style={styles.emptyText}>
+              Não foram encontradas feiras.
+            </Text>
+          )}
+        </View>
+      }
+    />
+  );
 }
 
 const styles = StyleSheet.create({
@@ -181,5 +199,13 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 12,
         color: '#777777'
-    }
+    },
+
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 35,
+        paddingHorizontal: 20,
+    },
 })

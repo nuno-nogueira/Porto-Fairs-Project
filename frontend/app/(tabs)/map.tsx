@@ -19,10 +19,12 @@ import { GET_MAP_MARKETS } from '@/graphql/marketQueries';
 import type { MapMarket } from '@/types/MapMarket';
 import MapListView from '@/components/map-components/ListView';
 
+
 const STADIA_MAP_STYLE = process.env.EXPO_PUBLIC_STADIA_MAPS_API_KEY
   ? `https://tiles.stadiamaps.com/styles/alidade_smooth.json?api_key=${process.env.EXPO_PUBLIC_STADIA_MAPS_API_KEY}`
   : null;
 
+  
 type LocationStatus = 'loading' | 'ready' | 'permission-denied' | 'services-disabled' | 'error';
  
 interface FairItem {
@@ -82,7 +84,11 @@ export default function MapScreen() {
 
   const [locationRetry, setLocationRetry] = useState(0);
 
-  const { data: marketsResponse } = useQuery<{ markets: MapMarket[] }>(GET_MAP_MARKETS);
+  const {
+    data: marketsResponse,
+    loading: marketsLoading,
+    error: marketsError,
+} = useQuery<{ markets: MapMarket[] }>(GET_MAP_MARKETS);
 
   const mapMarkets = useMemo(() => {
     return (marketsResponse?.markets ?? []).filter((market) =>
@@ -268,9 +274,9 @@ export default function MapScreen() {
   const snapPoints = useMemo(() => ({
     listMin: 30,
     listExpanded: screenHeight * 0.42,
-    details: screenHeight * 0.38,
-    route: screenHeight * 0.60,
-    fullRoute: screenHeight * 0.15,
+    details: screenHeight * 0.48,
+    route: screenHeight * 0.52,
+    fullRoute: screenHeight * 0.23,
   }), [screenHeight]);
 
   // Dynamic Snap Points, depending on the component being displayed
@@ -298,7 +304,7 @@ export default function MapScreen() {
       case 'fullRoute':
         return {
           dynamicSnapPoints: [snapPoints.listMin, snapPoints.fullRoute],
-          initialIndex: 2,
+          initialIndex: 1,
         };
       default:
         return { dynamicSnapPoints: [snapPoints.listMin], initialIndex: 0 };
@@ -370,11 +376,11 @@ export default function MapScreen() {
   const renderContent = () => {
     // Render content based on the component selected & respective props
     if (viewMode === 'list') {
-      return <MapListView data={filteredMarkets.map(toFairItem)} onSelect={handleCardPress}/>
+      return <MapListView data={filteredMarkets.map(toFairItem)} onSelect={handleCardPress} loading={marketsLoading} error={!!marketsError} />
     } else if (viewMode === 'details' && selectedFair) {
       return <FairDetails fair={selectedFair} routeInfo={null} onBack={handleBackToList} onStartRoute={handleStartRoute} />;
     } else if (viewMode === 'route' && selectedFair) {
-      return <StartRoute fair={selectedFair} routeInfo={null} onBack={handleBackToDetails} onBeginRoute={handleRouteView} onModeChange={setActiveTransportMode} selectedMode={activeTransportMode} />;
+      return <StartRoute fair={selectedFair} routeInfo={null} onBack={handleBackToDetails} onBeginRoute={handleRouteView} onModeChange={setActiveTransportMode} selectMode={activeTransportMode} />;
     } else if (viewMode === 'fullRoute' && selectedFair) {
       return <FullMap fair={selectedFair} routeInfo={null} onEndRoute={handleEndRoute} selectedMode={activeTransportMode} onModeChange={setActiveTransportMode} />;
     }
@@ -532,6 +538,8 @@ export default function MapScreen() {
             <MapListView
               data={filteredMarkets.map(toFairItem)}
               onSelect={handleCardPress}
+              loading={marketsLoading}
+              error={!!marketsError}           
             />
           ) : (
             <BottomSheetView style={{ flex: 1 }}>

@@ -1,71 +1,109 @@
 // Imports
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ImageSourcePropType } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 // Item Definitions
-interface FairItem {id: number | string, title: string; schedule: string; address: string}
-type TransportMode = "driving" | "walking" | "transit";
+interface FairItem {
+    id: number | string;
+    title: string;
+    schedule: string;
+    address: string;
+}
+
+type TransportMode = 'driving' | 'walking' | 'transit';
+
 interface RouteData {
-    driving?: { distance: string; duration: string; arrivalTime: string};
-    walking?: { distance: string, duration: string};
-    transit?: { distance: string, duration: string};
+    driving ?: { distance: string, duration: string; arrivalTime: string};
+    walking ?: { distance: string; duration: string};
+    transit ?: { distance: string; duration: string};
 }
-interface DisplayedRouteData {
-    distance: string;
-    duration: string;
-    arrivalTime: string;
-}
+
 interface StartRouteProps {
     fair: FairItem;
     onBeginRoute: () => void;
     onBack: () => void;
     routeInfo: RouteData | null;
-    selectedMode: TransportMode;
+    selectMode: TransportMode;
     onModeChange: (mode: TransportMode) => void;
 }
-interface RoutePointsProps {
+
+interface StartRouteProps {
+    fair: FairItem;
+    onBeginRoute: () => void;
+    onBack: () => void;
+    routeInfo: RouteData |  null;
+    selectMode: TransportMode;
+    onModeChange: (mode: TransportMode) => void;
+}
+
+interface RoutePointProps {
     title: string;
     address: string;
     isOrigin: boolean;
 }
 
-// Route Marker Definition
-const RoutePoint = ({ title, address, isOrigin}: RoutePointsProps) => {
-    return (
-        <View>
-            <Text style={styles.pointTitle}>{isOrigin ? 'A tua localização' : title}</Text>
-            <Text style={styles.pointAddress}>{isOrigin ? 'Localização Atual' : address}</Text>
+const transportOptions: {
+    mode: TransportMode;
+    label: string;
+    duration: string;
+    icon: ImageSourcePropType
+}[] = [
+    {
+        mode: 'walking',
+        label: 'A pé',
+        duration: '25 min',
+        icon: require('../../assets/map-icons/walk-icon.png'),
+    }, 
+    {
+        mode: 'driving',
+        label: 'Carro',
+        duration: '12 min',
+        icon: require('../../assets/map-icons/car-icon.png'),
+    },
+    {
+        mode: 'transit',
+        label: 'Transportes',
+        duration: '30 min',
+        icon: require('../../assets/map-icons/bus-icon.png'),
+    },
+]
+
+const RoutePoint = ({ title, address, isOrigin }: RoutePointProps) => {
+    return(
+        <View style={styles.pointRow}>
+            <View style={styles.markerColumn}>
+                <View
+                    style={[
+                        styles.marker,
+                        isOrigin ? styles.originMarker : styles.destinationMarker
+                    ]}
+                />
+            </View>
+
+            <View style={styles.pointTextContainer}>
+                <Text style={styles.pointTitle} numberOfLines={1}>{title}</Text>
+
+                <Text style={styles.pointAddress} numberOfLines={1}>{address}</Text>
+            </View>
         </View>
-    )
+    );
 }
 
-export default function StartRoute({ fair, onBeginRoute, onBack, routeInfo, selectedMode, onModeChange }: StartRouteProps) {
-    // Use Sate for default marker order
+export default function StartRoute({
+    fair,
+    onBeginRoute,
+    onBack,
+    selectMode,
+    onModeChange
+}: StartRouteProps) {
     const [isDefaultOrder, setIsDefaultOrder] = useState(true);
 
-    // Get duration & distance with Google Maps API
-    const displayedRoute: DisplayedRouteData = useMemo(() => {
-        const data = routeInfo?.[selectedMode];
-
-        const distance = data?.distance || '...';
-        const duration = data?.duration || '...';
-
-        const arrivalTime = (data && 'arrivalTime' in data) ? data.arrivalTime : 'N/A';
-        return { distance, duration, arrivalTime}
-    }, [selectedMode, routeInfo])
-
-    // Get duration for driving, walking & transit mode
-    const drivingDuration = routeInfo?.driving?.duration || '...';
-    const walkingDuration = routeInfo?.walking?.duration || '...';
-    const transitDuration = routeInfo?.transit?.duration || '...';
-
-    // Origin & Destination Points
     const originPoint = {
         title: 'A tua localização',
-        address: 'Localização Atual',
-        isOrigin: true
-    }
+        address: 'Localização atual',
+        isOrigin: true,
+    };
 
     const destinationPoint = {
         title: fair.title,
@@ -73,271 +111,340 @@ export default function StartRoute({ fair, onBeginRoute, onBack, routeInfo, sele
         isOrigin: false
     }
 
-    // Define first & second points based on the point coordinates
     const firstPoint = isDefaultOrder ? originPoint : destinationPoint;
     const secondPoint = isDefaultOrder ? destinationPoint : originPoint;
 
-    // Swap origin & destination points
     const handleSwap = () => {
-        setIsDefaultOrder(prev => !prev)
+        setIsDefaultOrder(prev => !prev);
     }
 
-    // Render transport mode buttons
-    const renderTransportButton = (mode: TransportMode, icon: ImageSourcePropType, duration: string) => (
-        <TouchableOpacity
-        style={[
-            styles.distanceSection,
-            selectedMode === mode && styles.selectedMode
-        ]}
-        onPress={() => onModeChange(mode)}
-        activeOpacity={0.7}
-        >
-            <Image
-                source={icon}
-                style={[
-                    styles.iconStyle,
-                    selectedMode === mode && styles.iconActive 
-                ]}
-            />
-            <Text
-                style={[
-                    styles.durationText,
-                    selectedMode === mode && styles.durationActiveText
-                ]}
-            >
-                {duration}
-            </Text>
-        </TouchableOpacity>
-    )
-
-    return (
+    return(
         <View style={styles.container}>
-            <TouchableOpacity style={{position: 'absolute', marginLeft: 10}} onPress={onBack}>
-                    <Ionicons style={{backgroundColor: 'white', padding: 2, borderColor: '#C64F23', borderWidth: 0.5, borderRadius: 20}} name="chevron-back" size={24} color={'#C64F23'} />
+            { /* Header */}
+            <View style={styles.header}>
+                <Text style={styles.headerTitle}>Planear Rota</Text>
+
+                <TouchableOpacity
+                    style={styles.closeButton}
+                    onPress={onBack}
+                    activeOpacity={0.7}
+                    accessibilityRole='button'
+                    accessibilityLabel='Fechar'
+                >
+                    <Ionicons name="close" size={21} color='#7A716E' />
                 </TouchableOpacity>
+            </View>
+
+            { /* Transport Options */ }
             <View style={styles.transportContainer}>
-                <View style={styles.distanceInfo}>
-                    {renderTransportButton('walking', require('../../assets/map-icons/walk-icon.png'), walkingDuration)}
-                    {renderTransportButton('driving', require('../../assets/map-icons/car-icon.png'), drivingDuration)}
-                    {renderTransportButton('transit', require('../../assets/map-icons/bus-icon.png'), transitDuration)}
-                </View>
-                <View style={styles.line}>
-                    {selectedMode === 'walking' && <View style={[styles.activeLineBase, styles.activeLineWalking]} />}
-                    {selectedMode === 'driving' && <View style={[styles.activeLineBase, styles.activeLineDriving]} />}
-                    {selectedMode === 'transit' && <View style={[styles.activeLineBase, styles.activeLineTransit]} />}
-                </View>
-            </View>
-            
-            <View>
-                <Text style={styles.title}>{fair.title}</Text>
-                <View style={styles.details}>
-                    <Image source={require('../../assets/map-icons/distance-icon.png')} />
-                    <Text style={{color: '#7A716E'}}>{displayedRoute.distance}</Text>
-                    {displayedRoute.distance !== '...' && (
-                        <View style={styles.detailSeparator}></View>
-                    )}
-                    
-                    <Text>{displayedRoute.arrivalTime}</Text>
-                </View>
-            </View>
+                {transportOptions.map(option => {
+                    const isSelected = selectMode === option.mode;
 
-            <View style={styles.routeHeader}>
-                <View style={styles.addressSection}>
-                    <View style={styles.pointContainer}>
-                        <View style={styles.iconColumn}>
+                    return(
+                        <TouchableOpacity
+                            key={option.mode}
+                            style={[
+                                styles.transportOption,
+                                isSelected && styles.selectedTransportOption
+                            ]}
+                            onPress={() => onModeChange(option.mode)}
+                            activeOpacity={0.7}
+                            accessibilityRole="button"
+                            accessibilityState={{ selected: isSelected }}
+                        >
                             <Image
-                                source={require('../../assets/map-icons/yellow-dot-icon.png')}
-                                style={styles.dotImage}
+                                source={option.icon}
+                                style={[
+                                    styles.transportIcon,
+                                    isSelected && styles.activeTransportIcon
+                                ]}
+                                resizeMode="contain"
                             />
-                        </View>
-                        <View style={styles.dottedLineContainer}>
-                            <View style={styles.dottedLine}/>
-                        </View>
 
-                        <RoutePoint
-                            title={firstPoint.title}
-                            address={firstPoint.address}
-                            isOrigin={firstPoint.isOrigin}
-                        />
-                    </View>
-                
-                    <View style={styles.pointContainer}>
-                        <View style={styles.iconColumn}>
-                            <Image
-                                source={require('../../assets/map-icons/orange-dot-icon.png')}
-                                style={styles.dotImage}
-                            />
-                        </View>
+                            <Text
+                                style={[
+                                    styles.transportLabel,
+                                    isSelected && styles.activeTransportLabel
+                                ]}
+                                numberOfLines={1}
+                            >
+                                {option.label}
+                            </Text>
 
-                        <RoutePoint
-                            title={secondPoint.title}
-                            address={secondPoint.address}
-                            isOrigin={secondPoint.isOrigin}
-                        />
-                    </View>
+                            <Text
+                                style={[
+                                    styles.transportDuration,
+                                    isSelected && styles.activeTransportLabel,
+                                ]}
+                            >
+                                {option.duration}
+                            </Text>
+
+                        </TouchableOpacity>
+                    )
+                })}
+            </View>
+
+            <View style={styles.routeSummary}>
+                <View style={styles.summaryItem}>
+                    <Ionicons name="navigate-outline" size={16} color="#7A716E" />
+                    <Text style={styles.summaryText}>3,6 km</Text>
                 </View>
 
-                <TouchableOpacity onPress={handleSwap} style={styles.swapButton}>
-                    <Image source={require('../../assets/map-icons/swap-route-icon.png')} style={styles.swapIcon} />
-                </TouchableOpacity>
+                <View style={styles.summarySeparator} />
+
+                <View style={styles.summaryItem}>
+                    <Ionicons name="time-outline" size={16} color="#7A716E" />
+                    <Text style={styles.summaryText}>Chegada às 12:45</Text>
+                </View>
             </View>
 
-            <View>
-                <TouchableOpacity style={styles.startRouteButton} onPress={onBeginRoute}>
-                    <Text style={{color: 'white', fontWeight: 'bold'}}>Iniciar Rota</Text>
-                </TouchableOpacity>
+            {/* Route Points */}
+            <View style={styles.routeSection}>
+                <View style={styles.routeHeader}>
+                    <Text style={styles.sectionTitle}>Percurso</Text>
+
+                    <TouchableOpacity
+                        onPress={handleSwap}
+                        style={styles.swapButton}
+                        activeOpacity={0.7}
+                        accessibilityRole='button'
+                        accessibilityLabel='Inverter origem e destino'
+                    >
+                        <Ionicons
+                            name="swap-vertical"
+                            size={18}
+                            color='#C64F23'
+                        />
+                    </TouchableOpacity>
+                </View>
+
+                <View style={styles.routePoints}>
+                    <View style={styles.connector}/>
+
+                    <RoutePoint
+                        title={firstPoint.title}
+                        address={firstPoint.address}
+                        isOrigin={firstPoint.isOrigin}
+                    />
+
+                    <RoutePoint
+                        title={secondPoint.title}
+                        address={secondPoint.address}
+                        isOrigin={secondPoint.isOrigin}
+                    />
+
+                </View>
             </View>
+
+            { /* Start Route */ }
+            <TouchableOpacity
+                style={styles.startRouteButton}
+                onPress={onBeginRoute}
+                activeOpacity={0.85}
+                accessibilityRole='button'
+            >
+                <Ionicons name="navigate-outline" size={18} color="#FFFFFF" />
+
+                <Text style={styles.startRouteButtonText}>Iniciar Rota</Text>
+            </TouchableOpacity>
+
         </View>
-    );
+    )
 }
 
 const styles = StyleSheet.create({
     container: {
-        padding: 20,
+        paddingHorizontal: 18,
+        paddingTop: 14,
+        paddingBottom: 14,
     },
-    distanceInfo: {
-        flexDirection: 'row',
-        columnGap: 40,
-        marginBottom: 10
-    },
-    distanceSection: {
-        flexDirection: 'row',
-        alignItems: 'center'
-    },
-    selectedMode: {
-        backgroundColor: '#FAE8E1'
-    },
-    iconStyle: {
-        tintColor: '#7A716E',
-    },
-    iconActive: {
-        tintColor: '#C64F23', 
-    },
-    durationText: {
-        color: '#7A716E',
-        marginLeft: 5,
-        fontWeight: '500',
-    },
-    durationActiveText: {
-        color: '#C64F23',
-        fontWeight: 'bold',
-    },
-    line: {
-        width: 300,
-        height: 2,
-        backgroundColor: 'rgba(250, 182, 171, 0.5)',
-        position: 'relative'
-    },
-    title: {
-        fontSize: 22,
-        fontWeight: 'bold',
-        marginLeft: 15,
-        marginTop: 30
-    },
-    details: {
+
+    // Header
+    header: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginLeft: 15,
-        marginTop: 15,
-        columnGap: 5
+        justifyContent: 'space-between',
+        marginBottom: 14,
     },
-    detailSeparator: {
-        width: 5, 
-        height: 5, 
-        borderRadius: 50, 
-        backgroundColor: '#C64F23'
+    headerTitle: {
+        fontSize: 17,
+        fontWeight: '700',
+        color: '#302824',
+    },
+    closeButton: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#F5F0ED',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    // Transport options
+    transportContainer: {
+        flexDirection: 'row',
+        gap: 9,
+        marginBottom: 17,
+    },
+    transportOption: {
+        flex: 1,
+        height: 65,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#EEE5E1',
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'column',
+        gap: 3,
+        paddingHorizontal: 4,
+    },
+    selectedTransportOption: {
+        backgroundColor: '#FAE8E1',
+        borderColor: '#E8B6A2',
+    },
+    transportIcon: {
+        width: 19,
+        height: 19,
+        tintColor: '#7A716E',
+    },
+    activeTransportIcon: {
+        tintColor: '#C64F23',
+    },
+    transportLabel: {
+        fontSize: 11,
+        fontWeight: '500',
+        color: '#7A716E',
+    },
+    activeTransportLabel: {
+        color: '#C64F23',
+        fontWeight: '700',
+    },
+
+    // Route section
+    routeSection: {
+        marginBottom: 16,
     },
     routeHeader: {
         flexDirection: 'row',
-        paddingRight: 10,
-        paddingLeft: 15,
-        marginBottom: 10,
-        marginTop: 40
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 11,
     },
-    addressSection: {
-        flex: 1, 
-    },
-    pointContainer: {
-        flexDirection: 'row',
-        marginBottom: 15,
-    },
-    iconColumn: {
-        marginRight: 15,
-    },
-    pointTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    pointAddress: {
+    sectionTitle: {
         fontSize: 14,
-        color: '#7A716E',
-    },
-    dotImage: {
-        width: 18, 
-        height: 18,
-    },
-    dottedLineContainer: {
-        position: 'absolute',
-        top: 5, 
-        bottom: -15, 
-        width: '100%',
-        marginLeft: 8
-        
-    },
-    dottedLine: {
-        width: 1, 
-        flex: 1, 
-        borderWidth: 1,
-        borderStyle: 'dashed',
-        borderColor: '#FFB800', 
+        fontWeight: '700',
+        color: '#302824',
     },
     swapButton: {
-        paddingTop: 30,
-        marginRight: 15
-    },
-    swapIcon: {
-        width: 18,
-        height: 40,
-        resizeMode: 'contain',
-        tintColor: '#C64F23', 
-    },
-    startRouteButton: {
-        backgroundColor: '#C64F23',
-        margin: 'auto',
-        width: 280,
-        height: 40,
-        justifyContent: 'center',
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        backgroundColor: '#FAE8E1',
         alignItems: 'center',
-        marginTop: 20,
-        borderTopLeftRadius: 6,
-        borderTopRightRadius: 6,
-        borderBottomLeftRadius: 6,
-        borderBottomRightRadius: 6,
+        justifyContent: 'center',
     },
-
-    transportContainer: { 
-        alignSelf: 'center',
-        width: 300, 
-        marginTop: 20
+    routePoints: {
+        gap: 11,
+        position: 'relative',
     },
-
-    activeLineBase: { 
-        height: 2,
-        backgroundColor: '#C64F23', 
+    pointRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        minHeight: 38,
+    },
+    markerColumn: {
+        width: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 10,
+        zIndex: 1,
+    },
+    marker: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        borderWidth: 2,
+        backgroundColor: '#FFFFFF',
+    },
+    originMarker: {
+        borderColor: '#FFB800',
+    },
+    destinationMarker: {
+        borderColor: '#C64F23',
+    },
+    connector: {
         position: 'absolute',
-        bottom: 0,
+        top: 19,
+        bottom: 19,
+        left: 11,
+        borderLeftWidth: 1.5,
+        borderStyle: 'dashed',
+        borderColor: '#E5C5B8',
+    },
+    pointTextContainer: {
+        flex: 1,
+    },
+    pointTitle: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#302824',
+    },
+    pointAddress: {
+        fontSize: 11,
+        color: '#8A807C',
+        marginTop: 2,
     },
 
-    activeLineWalking: {
-        width: 80,
-        marginLeft: 0,
+    // Start route button
+    startRouteButton: {
+        height: 45,
+        width: '100%',
+        borderRadius: 10,
+        backgroundColor: '#C64F23',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
     },
-    activeLineDriving: {
-        width: 130,
-        marginLeft: 80
+    startRouteButtonText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '700',
     },
-    activeLineTransit: {
-        width: 90,
-        marginLeft: 210, 
+
+    transportDuration: {
+        fontSize: 10,
+        color: '#7A716E',
+        fontWeight: '500',
+    },
+
+    routeSummary: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 14,
+        marginTop: -5,
+        marginBottom: 16,
+    },
+
+    summaryItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+    },
+
+    summaryText: {
+        fontSize: 12,
+        color: '#7A716E',
+        fontWeight: '500',
+    },
+
+    summarySeparator: {
+        width: 4,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: '#C64F23',
     },
 });
