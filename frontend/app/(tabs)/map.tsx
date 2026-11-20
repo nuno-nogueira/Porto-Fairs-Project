@@ -1,6 +1,6 @@
 // Imports
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { StyleSheet, Dimensions, View, FlatList, TouchableOpacity, Image, Text } from 'react-native';
+import { StyleSheet, Dimensions, View, FlatList, TouchableOpacity, Image, Text, Linking } from 'react-native';
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
 import { ThemedView } from '@/components/themed-view';
 import FairDetails from '@/components/map-components/MarketView';
@@ -12,21 +12,19 @@ import { categoryIcons } from './categoryIcons';
 import categories from '../data/categories.json';
 
 import { Map, Camera, Marker } from '@maplibre/maplibre-react-native';
+import type { CameraRef } from '@maplibre/maplibre-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@apollo/client/react';
 import { GET_MAP_MARKETS } from '@/graphql/marketQueries';
 import type { MapMarket } from '@/types/MapMarket';
 import MapListView from '@/components/map-components/ListView';
 
-// User Location by default (center of Porto)
-const USER_LOCATION = {
-  latitude: 41.144,
-  longitude: -8.608,
-};
-
 const STADIA_MAP_STYLE = process.env.EXPO_PUBLIC_STADIA_MAPS_API_KEY
   ? `https://tiles.stadiamaps.com/styles/alidade_smooth.json?api_key=${process.env.EXPO_PUBLIC_STADIA_MAPS_API_KEY}`
   : null;
 
+type LocationStatus = 'loading' | 'ready' | 'permission-denied' | 'services-disabled' | 'error';
+ 
 interface FairItem {
   id: string | number;
   title: string;
@@ -67,7 +65,12 @@ export default function MapScreen() {
   // Use States
   // Fair Selection
   const [selectedFair, setSelectedFair] = useState<FairItem | null>(null);
-  const [userLocation, setUserLocation] = useState(USER_LOCATION);
+  const [userLocation, setUserLocation] = useState<{
+    latitude: number,
+    longitude: number;
+  } | null>(null);
+
+  const [locationStatus, setLocationStatus] = useState<LocationStatus>('loading');
 
   // Map View Mode
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -76,6 +79,8 @@ export default function MapScreen() {
   // Search Bar Query
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
+
+  const [locationRetry, setLocationRetry] = useState(0);
 
   const { data: marketsResponse } = useQuery<{ markets: MapMarket[] }>(GET_MAP_MARKETS);
 
@@ -91,57 +96,173 @@ export default function MapScreen() {
   }, [marketsResponse]);
 
   const filteredMarkets = useMemo(() => {
-    if (!selectedCategory) return mapMarkets;
+    const normalizedQuery = normalizeCategory(searchQuery);
 
-    const normalizeSelectedCategory = normalizeCategory(selectedCategory);
+  return mapMarkets.filter((market) => {
+    // Category filter
+    const matchesCategory =
+      !selectedCategory ||
+      (market.categories ?? []).some(
+        (category) =>
+          normalizeCategory(category) === normalizeCategory(selectedCategory)
+      );
 
-    return mapMarkets.filter((market) => 
-    (market.categories ?? []).some(
-      (category) => normalizeCategory(category) === normalizeSelectedCategory
-    ))
-  }, [mapMarkets, selectedCategory])
+    // Search filter
+    const searchableValues = [
+      market.name,
+      market.address,
+      market.description,
+      ...(market.categories ?? []),
+      ...(market.sellers ?? []).map((seller) => seller.full_name),
+    ];
+
+    const matchesSearch =
+      !normalizedQuery ||
+      searchableValues.some((value) =>
+        normalizeCategory(value ?? '').includes(normalizedQuery)
+      );
+
+    return matchesCategory && matchesSearch;
+  });
+  }, [mapMarkets, selectedCategory, searchQuery])
 
   // Get the device's screen height
   const screenHeight = Dimensions.get('window').height;
 
   // Get user location with geolocation API
   useEffect(() => {
-    let locationSubscription: Location.LocationSubscription | null = null;
+    let isMounted = true;
+    let locationSubscription: Location.LocationSubscription | null = null
+    let hasReceivedLocation = false;
 
-    const startWatchingLocation = async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        console.error('Permissão de localização negada');
-        return;
-      }
+    // Update the user's coordinates
+    const updateUserLocation = (location: Location.LocationObject) => {
+      if (!isMounted) return;
 
-      const options = {
-        accuracy: Location.Accuracy.High,
-        timeInterval: 5000,
-        distanceInterval: 10,
-      };
+      hasReceivedLocation = true;
 
-      locationSubscription = await Location.watchPositionAsync(
-        options,
-        (location) => {
-          setUserLocation({
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
-          });
+      setUserLocation({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude
+      });
+
+      setLocationStatus('ready');
+    };
+
+    const startWatchingLocation = async() => {
+      try {
+        // Check existing foreground permission
+        let permission = await Location.getForegroundPermissionsAsync();
+
+        if (!permission.granted && permission.canAskAgain) permission = await Location.requestForegroundPermissionsAsync();
+
+        if (!isMounted) return;
+
+        if (!permission.granted) {
+          setLocationStatus('permission-denied');
+          return;
         }
-      );
+
+        // Check whether device location services are enabled
+        const servicesEnabled = await Location.hasServicesEnabledAsync();
+
+        if (!isMounted) return;
+
+        if (!servicesEnabled) {
+          setLocationStatus('services-disabled');
+          return;
+        }
+
+        // Try to get a recent cached position first
+        try {
+          const lastknownPosition = await Location.getLastKnownPositionAsync({
+            maxAge: 60000,
+            requiredAccuracy: 100
+          });
+
+          if (!isMounted) return;
+
+          if (lastknownPosition) updateUserLocation(lastknownPosition);
+        } catch (err) {
+          console.warn(`[Location] Could not retrieve last known position ->`, err);
+        }
+
+        // Start listening for continuous location updates
+        try {
+          const subscription = await Location.watchPositionAsync(
+            {
+              accuracy: Location.Accuracy.High,
+              timeInterval: 5000,
+              distanceInterval: 10
+            },
+            updateUserLocation,
+            (reason) => {
+              console.error('[Location] Watch error ->', reason);
+
+              if (isMounted && !hasReceivedLocation)setLocationStatus('error');
+            }
+          );
+
+          if (!isMounted) {
+            subscription.remove();
+            return;
+          }
+
+          locationSubscription = subscription;
+        } catch (err) {
+          console.error('[Location] Could not start location watcher ->', err);
+          
+        }
+
+        // Request a new position independently of the watcher
+        try {
+          const currentPosition = await Location.getCurrentPositionAsync({accuracy: Location.Accuracy.Balanced});
+
+          updateUserLocation(currentPosition);
+        } catch (err) {
+          console.error('[Location] Could not retrieve current position ->', err);
+
+          if (isMounted && !hasReceivedLocation) setLocationStatus('error');
+        }
+
+        // If both initial position methods failed
+        if (isMounted && !hasReceivedLocation) setLocationStatus('error');
+      } catch (err) {
+        console.error('[Location] Location setup failed ->', err);
+
+        if (isMounted && !hasReceivedLocation) setLocationStatus('error');
+        
+      }
     };
 
     startWatchingLocation();
-    return () => {
-      if (locationSubscription) {
-        locationSubscription.remove();
-      }
-    };
-  }, []);
 
-  // Bottom Sheet reference
+    return () => {
+      isMounted = false;
+      locationSubscription?.remove();
+    }
+  }, [locationRetry]);
+
+  const handleLocationNoticePress = async() => {
+    try {
+      const permission = await Location.getForegroundPermissionsAsync();
+
+      if (!permission.granted && !permission.canAskAgain) {
+        await Linking.openSettings();
+        return;
+      }
+
+      setLocationStatus('loading');
+      setLocationRetry((previous) => previous + 1);
+    } catch (err) {
+      console.error('[Location] Could not retry location access -> ', err);
+      
+    }
+  }
+
+  // Component Refs
   const bottomSheetRef = useRef<BottomSheet>(null);
+  const cameraRef = useRef<CameraRef | null>(null);
 
   // Snap points for the bottom sheet
   const snapPoints = useMemo(() => ({
@@ -221,6 +342,22 @@ export default function MapScreen() {
     setSelectedFair(null);
   };
 
+  const handleRecenter = () => {
+    if (!userLocation) {
+      console.warn('[Map] User Location is not available yet.');
+      return;
+    }
+
+    cameraRef.current?.flyTo({
+      center: [
+        userLocation.longitude,
+        userLocation.latitude
+      ],
+      duration: 1000,
+      easing: 'fly'
+    });
+  };
+
   /*
    * Filter search bar
    * Filter by fair name
@@ -251,7 +388,7 @@ export default function MapScreen() {
         <SearchBar
           value={searchQuery}
           onChange={setSearchQuery}
-          placeholder='Procura por nome, concelho...'
+          placeholder='Procura por nome, morada, vendedor...'
         />
         <View style={styles.categorySelection}>
           <FlatList
@@ -286,6 +423,7 @@ export default function MapScreen() {
             logo={true}
           >
             <Camera
+              ref={cameraRef}
               initialViewState={{
                 center: [-8.6291, 41.1579],
                 zoom: 12,
@@ -317,15 +455,17 @@ export default function MapScreen() {
             })}
 
             {/* User location marker */}
-            <Marker
-              id="user-location"
-              lngLat={[userLocation.longitude, userLocation.latitude]}
-              anchor="center"
-            >
-              <View style={styles.userLocationMarker}>
-                <View style={styles.userLocationMarkerCenter} />
-              </View>
-            </Marker>
+            {userLocation && (
+              <Marker
+                id="user-location"
+                lngLat={[userLocation.longitude, userLocation.latitude]}
+                anchor='center'
+              >
+                <View style={styles.userLocationMarker}>
+                  <View style={styles.userLocationMarkerCenter} />
+                </View>
+              </Marker>
+            )}
           </Map>
         ) : (
           <View style={[styles.map, styles.mapMessage]}>
@@ -333,6 +473,47 @@ export default function MapScreen() {
               Chave API do Stadia Maps em falta. Verifica o ficheiro .env.
             </Text>
           </View>
+        )}
+
+        {/* Recenter map on user location */}
+        {userLocation && (
+          <TouchableOpacity
+            style={styles.recenterButton}
+            onPress={handleRecenter}
+            activeOpacity={0.75}
+            accessibilityRole='button'
+            accessibilityLabel='Centrar mapa na minha localização'
+            accessibilityHint='Move o mapa para a tua posição atual'
+          >
+            <Ionicons
+              name='locate-outline'
+              size={25}
+              color='#C64F23'
+            />
+          </TouchableOpacity>
+        )}
+
+        {locationStatus !== 'loading' && locationStatus !== 'ready' && (
+          <TouchableOpacity
+            style={styles.locationNotice}
+            onPress={handleLocationNoticePress}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+          >
+            <Text style={styles.locationNoticeText}>
+              {locationStatus === 'permission-denied'
+                ? 'Permite o acesso à localização para mostrar a tua posição.'
+                : locationStatus === 'services-disabled'
+                  ? 'Ativa os serviços de localização do teu dispositivo.'
+                  : 'Não foi possível obter a localização. Toca para tentar novamente.'}
+            </Text>
+
+            <Text style={styles.locationNoticeAction}>
+              {locationStatus === 'permission-denied'
+                ? 'Ativar localização'
+                : 'Tentar novamente'}
+            </Text>
+          </TouchableOpacity>
         )}
 
         <BottomSheet
@@ -467,4 +648,52 @@ const styles = StyleSheet.create({
     color: '#C64F23',
     textAlign: 'center',
   },
+  locationNotice: {
+    position: 'absolute',
+    top: 160,
+    left: 20,
+    right: 20,
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    borderRadius: 12,
+    zIndex: 3,
+    elevation: 4,
+  },
+
+  locationNoticeText: {
+    color: '#C64F23',
+    textAlign: 'center',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+
+  locationNoticeAction: {
+    color: '#C64F23',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 6,
+  },
+
+  recenterButton: {
+    position: 'absolute',
+    top: 180,
+    right: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 3,
+
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 5,
+},
 });
