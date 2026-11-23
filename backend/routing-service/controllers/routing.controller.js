@@ -34,49 +34,80 @@ export const getRoutes = async(req, res) => {
             message: 'Routes calculated successfully.',
             data: routes,
         });
-    } catch (err) {
-        const providerStatus = axios.isAxiosError(err)
-            ? err.response?.status
+    } catch (error) {
+        const providerStatus = axios.isAxiosError(error)
+        ? error.response?.status
+        : undefined;
+
+    const providerError = error.response?.data?.error;
+
+    const providerErrorCode =
+        typeof providerError === 'object' && providerError !== null
+            ? providerError.code
             : undefined;
 
-        // avoid logging request coordinates or authorization headers
-        logger.error({
-            message: err.message,
-            providerStatus,
-            providerCode: axios.isAxiosError(err)
-                ? err.code
-                : undefined,
-        }, 'POST /routes - Failed.');
+    const providerErrorMessage =
+        typeof providerError === 'object' && providerError !== null
+            ? providerError.message
+            : typeof providerError === 'string'
+                ? providerError
+                : error.message;
 
-        if (providerStatus === 429) {
-            return res.status(429).json({
-                error: 'Routing provider rate limit reached. Please try again later.',
-            });
-        }
+    logger.error({
+        message: error.message,
+        providerStatus,
+        providerErrorCode,
+        providerErrorMessage,
+        errorCode: error.code,
+    }, 'POST /routes - Failed.');
 
-        if (providerStatus === 403 || providerStatus === 401) {
-            return res.status(503).json({
-                error: 'Routing provider rejected the request. Check the API key or daily quota.',
-            });
-        }
-
-        if (providerStatus === 404) {
-            return res.status(422).json({
-                error: 'No route could be calculated for the provided coordinates.',
-            });
-        }
-
-        if (
-            axios.isAxiosError(err) &&
-            err.code === 'ECONNABORTED'
-        ) {
-            return res.status(504).json({
-                error: 'Routing provider request timed out.',
-            });
-        }
-
-        return res.status(502).json({
-            error: 'Unable to calculate routes at the moment.',
+    if ([2009, 2010, 2016].includes(Number(providerErrorCode))) {
+        return res.status(422).json({
+            error: 'Não foi possível encontrar um percurso entre estas localizações.',
         });
+    }
+
+    if (providerStatus === 400) {
+        return res.status(422).json({
+            error: 'Não foi possível calcular o percurso com as coordenadas fornecidas.',
+        });
+    }
+
+    if (providerStatus === 429) {
+        return res.status(429).json({
+            error: 'Limite de pedidos de rotas atingido. Tenta novamente mais tarde.',
+        });
+    }
+
+    if ([401, 403].includes(providerStatus)) {
+        return res.status(503).json({
+            error: 'O serviço de rotas está temporariamente indisponível.',
+        });
+    }
+
+    if ([500, 503].includes(providerStatus)) {
+        return res.status(503).json({
+            error: 'O serviço de rotas está temporariamente indisponível.',
+        });
+    }
+
+    if (providerStatus === 404) {
+        return res.status(502).json({
+            error: 'O serviço de rotas devolveu uma resposta inesperada.',
+        });
+    }
+
+    if (
+        error.code === 'ECONNABORTED' ||
+        error.code === 'ETIMEDOUT'
+    ) {
+        return res.status(504).json({
+            error: 'O pedido de cálculo da rota demorou demasiado tempo.',
+        });
+    }
+
+    return res.status(502).json({
+        error: 'Não foi possível calcular as rotas neste momento.',
+    });
     }
 }

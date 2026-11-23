@@ -9,6 +9,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+import type { RouteCalculation, TransportMode } from '@/types/Route';
+import {getRouteSummary, getRouteDurationLabel} from '@/utils/routeFormatting';
+
 // Item Definition
 interface FairItem {
     id: string | number;
@@ -17,18 +20,12 @@ interface FairItem {
     address: string;
 }
 
-type TransportMode = 'driving' | 'walking' | 'transit';
-
-interface RouteData {
-    driving?: { distance: string; duration: string; arrivalTime: string };
-    walking?: { distance: string; duration: string };
-    transit?: { distance: string; duration: string };
-}
-
 interface FullMapViewProps {
     fair: FairItem;
     onEndRoute: () => void;
-    routeInfo: RouteData | null;
+    routeInfo: RouteCalculation | null;
+    routeLoading: boolean;
+    routeError: string | null;
     selectedMode: TransportMode;
     onModeChange: (mode: TransportMode) => void;
 }
@@ -36,58 +33,37 @@ interface FullMapViewProps {
 interface TransportOption {
     mode: TransportMode;
     icon: ImageSourcePropType;
-    duration: string;
 }
 
-// Static route information
-const STATIC_ROUTE_INFO: Record<
-    TransportMode,
-    { duration: string; distance: string; arrivalTime: string }
-> = {
-    walking: {
-        duration: '25 min',
-        distance: '3,2 km',
-        arrivalTime: 'Chegada às 12:58',
-    },
-    driving: {
-        duration: '12 min',
-        distance: '3,6 km',
-        arrivalTime: 'Chegada às 12:45',
-    },
-    transit: {
-        duration: '30 min',
-        distance: '4,2 km',
-        arrivalTime: 'Chegada às 13:03',
-    },
-};
-
-// Transport options
 const transportOptions: TransportOption[] = [
     {
         mode: 'walking',
         icon: require('../../assets/map-icons/walk-icon.png'),
-        duration: STATIC_ROUTE_INFO.walking.duration,
     },
     {
         mode: 'driving',
         icon: require('../../assets/map-icons/car-icon.png'),
-        duration: STATIC_ROUTE_INFO.driving.duration,
     },
     {
         mode: 'transit',
         icon: require('../../assets/map-icons/bus-icon.png'),
-        duration: STATIC_ROUTE_INFO.transit.duration,
     },
 ];
 
 export default function FullMap({
     fair,
     onEndRoute,
+    routeInfo,
+    routeLoading,
+    routeError,
     selectedMode,
     onModeChange,
 }: FullMapViewProps) {
-    // Static information for the selected transport mode
-    const displayedRoute = STATIC_ROUTE_INFO[selectedMode];
+    const displayedRoute = getRouteSummary(selectedMode, routeInfo);
+    const displayedDuration = getRouteDurationLabel(selectedMode, routeInfo, routeLoading);
+    const displayedDistance = displayedRoute?.distance ?? (routeLoading ? 'A calcular...' : '--');
+    const displayedArrival = displayedRoute?.arrivalTime ?? (routeLoading ? 'A calcular...' : '--');
+    const selectedAttribution = selectedMode === 'transit' ? null : routeInfo?.[selectedMode]?.attribution ?? null;
 
     // Render transport selection buttons
     const renderTransportButton = (
@@ -151,7 +127,7 @@ export default function FullMap({
                     </View>
 
                     <Text style={styles.mainDurationText}>
-                        {displayedRoute.duration}
+                        {displayedDuration}
                     </Text>
                 </View>
 
@@ -165,7 +141,7 @@ export default function FullMap({
                         />
 
                         <Text style={styles.detailText}>
-                            {displayedRoute.distance}
+                            {displayedDistance}
                         </Text>
                     </View>
 
@@ -179,7 +155,7 @@ export default function FullMap({
                         />
 
                         <Text style={styles.detailText}>
-                            {displayedRoute.arrivalTime}
+                            {displayedArrival}
                         </Text>
                     </View>
                 </View>
@@ -191,7 +167,7 @@ export default function FullMap({
                             renderTransportButton(
                                 option.mode,
                                 option.icon,
-                                option.duration,
+                                getRouteDurationLabel(option.mode, routeInfo, routeLoading)
                             ),
                         )}
                     </View>
@@ -226,6 +202,18 @@ export default function FullMap({
                         )}
                     </View>
                 </View>
+
+                {routeLoading && (
+                    <Text style={styles.routeStatusText}>A calcular percursos...</Text>
+                )}
+
+                {routeError && (
+                    <Text style={styles.routeErrorText}>{routeError}</Text>
+                )}
+
+                {selectedAttribution && (
+                    <Text style={styles.attributionText}>{selectedAttribution}</Text>
+                )}
             </View>
 
             {/* End route button */}
@@ -301,6 +289,7 @@ const styles = StyleSheet.create({
         fontSize: 19,
         fontWeight: '800',
         color: '#C64F23',
+        left: 70
     },
 
     // Route details
@@ -414,6 +403,7 @@ const styles = StyleSheet.create({
     buttonColumn: {
         justifyContent: 'center',
         alignItems: 'center',
+        marginTop: 40
     },
 
     endRouteButton: {
@@ -431,5 +421,33 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontWeight: '700',
         fontSize: 12,
+    },
+
+    
+    disabledButton: {
+        opacity: 0.6,
+    },
+
+    routeStatusText: {
+        fontSize: 11,
+        color: '#C64F23',
+        textAlign: 'center',
+        marginTop: -9,
+        marginBottom: 10,
+    },
+
+    routeErrorText: {
+        fontSize: 11,
+        color: '#B42318',
+        textAlign: 'center',
+        marginBottom: 10,
+    },
+
+    attributionText: {
+        fontSize: 9,
+        color: '#8A807C',
+        textAlign: 'center',
+        marginTop: 6,
+        marginBottom: 14,
     },
 });

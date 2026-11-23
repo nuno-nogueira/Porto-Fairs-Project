@@ -11,7 +11,7 @@ import * as Location from 'expo-location';
 import { categoryIcons } from './categoryIcons';
 import categories from '../data/categories.json';
 
-import { Map, Camera, Marker } from '@maplibre/maplibre-react-native';
+import { Map, Camera, Marker, GeoJSONSource, Layer } from '@maplibre/maplibre-react-native';
 import type { CameraRef } from '@maplibre/maplibre-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@apollo/client/react';
@@ -19,11 +19,19 @@ import { GET_MAP_MARKETS } from '@/graphql/marketQueries';
 import type { MapMarket } from '@/types/MapMarket';
 import MapListView from '@/components/map-components/ListView';
 
+import {calculateRoutes, getRoutingErrorMessage} from '@/api/routing';
+import type { RouteCalculation } from '@/types/Route';
+import { useAuth } from '@/context/AuthContext';
 
 const STADIA_MAP_STYLE = process.env.EXPO_PUBLIC_STADIA_MAPS_API_KEY
   ? `https://tiles.stadiamaps.com/styles/alidade_smooth.json?api_key=${process.env.EXPO_PUBLIC_STADIA_MAPS_API_KEY}`
   : null;
 
+
+const ROUTE_TEST_ORIGIN = {
+  latitude: 41.1579,
+  longitude: -8.6291
+}
   
 type LocationStatus = 'loading' | 'ready' | 'permission-denied' | 'services-disabled' | 'error';
  
@@ -83,6 +91,20 @@ export default function MapScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string>('');
 
   const [locationRetry, setLocationRetry] = useState(0);
+
+  const [routeInfo, setRouteInfo] = useState<RouteCalculation | null>(null);
+  const [routeLoading, setRouteLoading] = useState(false);
+  const [routeError, setRouteError] = useState<string | null>(null);
+
+  const routeRequestIdRef = useRef(0);
+  const previousCameraStateRef = useRef({
+    routeVisible: false,
+    transportMode: activeTransportMode,
+    marketId: selectedFair?.id ?? null
+  })
+
+  const {user, loading: authLoading } = useAuth();
+  const isAuthenticated = user !== null;
 
   const {
     data: marketsResponse,
@@ -249,6 +271,7 @@ export default function MapScreen() {
     }
   }, [locationRetry]);
 
+
   const handleLocationNoticePress = async() => {
     try {
       const permission = await Location.getForegroundPermissionsAsync();
@@ -278,6 +301,13 @@ export default function MapScreen() {
     route: screenHeight * 0.52,
     fullRoute: screenHeight * 0.23,
   }), [screenHeight]);
+  
+  const routeCameraPadding = {
+    top: 24,
+    right: 24,
+    bottom: snapPoints.fullRoute + 24,
+    left: 24
+  }
 
   // Dynamic Snap Points, depending on the component being displayed
   const { dynamicSnapPoints, initialIndex } = useMemo(() => {
@@ -311,9 +341,126 @@ export default function MapScreen() {
     }
   }, [viewMode, snapPoints]);
 
+  // selected route geometry
+  const routeFeature = useMemo(() => {
+    if (viewMode !== 'fullRoute' || activeTransportMode === 'transit') return null;
+
+    const selectedRoute = routeInfo?.[activeTransportMode];
+    const coordinates = selectedRoute?.geometry.coordinates;
+
+    if (!coordinates || coordinates.length < 2) return null;
+
+    return {
+      type: 'Feature' as const,
+      properties: {transportMode: activeTransportMode},
+      geometry: {
+        type: 'LineString' as const,
+        coordinates
+      }
+    }
+  }, [viewMode, activeTransportMode, routeInfo])
+
+  const isRouteLineVisible = routeFeature !== null;
+
+  useEffect(() => {
+    const camera = cameraRef.current;
+
+    const previousState = previousCameraStateRef.current;
+
+    const currentMarketId = selectedFair?.id ?? null;
+
+    const modeChanged =
+        previousState.transportMode !== activeTransportMode;
+
+    const marketChanged =
+        previousState.marketId !== currentMarketId;
+
+    const currentState = {
+        routeVisible: isRouteLineVisible,
+        transportMode: activeTransportMode,
+        marketId: currentMarketId,
+    };
+
+    if (!camera) {
+        previousCameraStateRef.current = currentState;
+        return;
+    }
+
+    // 1. Entering navigation
+    if (isRouteLineVisible && !previousState.routeVisible) {
+        camera.flyTo({
+            center: [
+                ROUTE_TEST_ORIGIN.longitude,
+                ROUTE_TEST_ORIGIN.latitude,
+            ],
+            zoom: 16,
+            pitch: 55,
+            bearing: 0,
+            padding: routeCameraPadding,
+            duration: 1500,
+            easing: 'fly',
+        });
+    }
+
+    // 2. Switching transport mode or selecting another market
+    else if (
+        isRouteLineVisible &&
+        previousState.routeVisible &&
+        (modeChanged || marketChanged)
+    ) {
+        camera.easeTo({
+            center: [
+                ROUTE_TEST_ORIGIN.longitude,
+                ROUTE_TEST_ORIGIN.latitude,
+            ],
+            zoom: 16,
+            pitch: 55,
+            bearing: 0,
+            padding: routeCameraPadding,
+            duration: 900,
+            easing: 'ease',
+        });
+    }
+
+    // 3. Exiting navigation
+    else if (
+        !isRouteLineVisible &&
+        previousState.routeVisible
+    ) {
+        camera.flyTo({
+            center: [-8.6291, 41.1579],
+            zoom: 12,
+            pitch: 0,
+            bearing: 0,
+            padding: {
+                top: 0,
+                right: 0,
+                bottom: 0,
+                left: 0,
+            },
+            duration: 1000,
+            easing: 'ease',
+        });
+    }
+
+    previousCameraStateRef.current = currentState;
+
+    }, [
+        isRouteLineVisible,
+        activeTransportMode,
+        selectedFair?.id,
+    ]);
+
   // Handling Card Press Button
   const handleCardPress = (fair: FairItem) => {
+    // INvalidate any pending route request
+    routeRequestIdRef.current += 1;
+
     setSelectedFair(fair);
+    setRouteInfo(null);
+    setRouteLoading(false);
+    setRouteError(null);
+
     setViewMode('details');
   };
 
@@ -323,6 +470,12 @@ export default function MapScreen() {
 
   // Handling Back to List Button
   const handleBackToList = () => {
+    routeRequestIdRef.current += 1;
+
+    setRouteInfo(null);
+    setRouteLoading(false);
+    setRouteError(null);
+
     setViewMode('list');
     setSelectedFair(null);
   };
@@ -333,8 +486,61 @@ export default function MapScreen() {
   };
 
   // Handling Start Route Button
-  const handleStartRoute = () => {
+  const handleStartRoute = async() => {
+    if (!selectedFair) return;
+
     setViewMode('route');
+
+    // Wait for authentication state to be restored
+    if (authLoading) {
+      setRouteInfo(null);
+      setRouteLoading(false);
+      return;
+    }
+
+    // check if user is not authenticated
+    if (!isAuthenticated) {
+      setRouteInfo(null);
+      setRouteLoading(false);
+      setRouteError(null);
+      return;
+    }
+
+    // Reuse a route that was already calculated for a market
+    if (routeInfo) return;
+
+    const requestId = ++routeRequestIdRef.current;
+
+    setRouteInfo(null);
+    setRouteLoading(true);
+    setRouteError(null);
+
+    try {
+      const routes = await calculateRoutes({
+        origin: ROUTE_TEST_ORIGIN,
+        destination: {
+          latitude: selectedFair.latitude,
+          longitude: selectedFair.longitude
+        }
+      })
+
+      if (requestId !== routeRequestIdRef.current) return;
+
+      setRouteInfo(routes);
+
+      console.log('[Routing] Routes calculated successfully.');
+    } catch (err) {
+      if (requestId !== routeRequestIdRef.current) return;
+
+      const message = getRoutingErrorMessage(err);
+
+      setRouteError(message);
+      setRouteInfo(null);
+
+      console.error('[Routing] Route calculation failed:', message);
+    } finally {
+      if (requestId === routeRequestIdRef.current) setRouteLoading(false);
+    }
   };
 
   // Handling View Route Button
@@ -344,6 +550,12 @@ export default function MapScreen() {
 
   // Handling Remove Route Button
   const handleEndRoute = () => {
+    routeRequestIdRef.current += 1;
+
+    setRouteInfo(null);
+    setRouteLoading(false);
+    setRouteError(null);
+
     setViewMode('list');
     setSelectedFair(null);
   };
@@ -380,9 +592,29 @@ export default function MapScreen() {
     } else if (viewMode === 'details' && selectedFair) {
       return <FairDetails fair={selectedFair} routeInfo={null} onBack={handleBackToList} onStartRoute={handleStartRoute} />;
     } else if (viewMode === 'route' && selectedFair) {
-      return <StartRoute fair={selectedFair} routeInfo={null} onBack={handleBackToDetails} onBeginRoute={handleRouteView} onModeChange={setActiveTransportMode} selectMode={activeTransportMode} />;
+      return  (
+      <StartRoute
+        fair={selectedFair}
+        routeInfo={routeInfo}
+        routeLoading={routeLoading}
+        routeError={routeError}
+        isAuthenticated={isAuthenticated}
+        authLoading={authLoading}
+        onBack={handleBackToDetails}
+        onBeginRoute={handleRouteView}
+        onModeChange={setActiveTransportMode}
+        selectMode={activeTransportMode}
+    />);
     } else if (viewMode === 'fullRoute' && selectedFair) {
-      return <FullMap fair={selectedFair} routeInfo={null} onEndRoute={handleEndRoute} selectedMode={activeTransportMode} onModeChange={setActiveTransportMode} />;
+      return <FullMap
+        fair={selectedFair}
+        routeInfo={routeInfo}
+        routeLoading={routeLoading}
+        routeError={routeError}
+        onEndRoute={handleEndRoute}
+        selectedMode={activeTransportMode}
+        onModeChange={setActiveTransportMode}
+    />;
     }
     return null;
   };
@@ -395,7 +627,7 @@ export default function MapScreen() {
           value={searchQuery}
           onChange={setSearchQuery}
           placeholder='Procura por nome, morada, vendedor...'
-        />
+        />            
         <View style={styles.categorySelection}>
           <FlatList
             horizontal
@@ -433,32 +665,75 @@ export default function MapScreen() {
               initialViewState={{
                 center: [-8.6291, 41.1579],
                 zoom: 12,
+                bearing: 0,
+                pitch: 0
               }}
             />
 
-            {/* Live market markers from GraphQL */}
-            {filteredMarkets.map((market) => {
-              const isSelected = selectedFair?.id === market.id;
+            {/* Selected route from openrouteservice */}
+            {routeFeature && (
+              <GeoJSONSource
+                id="selected-route-source"
+                data={routeFeature}
+              >
+                <Layer
+                  id="selected-route-outline"
+                  type="line"
+                  source="selected-route-source"
+                  layout={{
+                    'line-cap': 'round',
+                    'line-join': 'round',
+                  }}
+                  paint={{
+                    'line-color': '#FFFFFF',
+                    'line-width': 9,
+                    'line-opacity': 0.95
+                  }}
+                />
 
-              return (
-                <Marker
-                  key={market.id}
-                  id={market.id}
-                  lngLat={[market.longitude, market.latitude]}
-                  anchor="bottom"
-                  onPress={() => handleMarketMarkerPress(market)}
-                >
-                  <View
-                    style={[
-                      styles.marketMarker,
-                      isSelected && styles.marketMarkerSelected,
-                    ]}
+                <Layer
+                  id="selected-route-line"
+                  type="line"
+                  source="selected-route-source"
+                  layout={{
+                      'line-cap': 'round',
+                      'line-join': 'round',
+                  }}
+                  paint={{
+                      'line-color': '#C64F23',
+                      'line-width': 5,
+                      'line-opacity': 1,
+                  }}
+        />
+              </GeoJSONSource>
+            )}
+
+            {filteredMarkets
+              .filter((market) => {
+
+                  return !(
+                      isRouteLineVisible &&
+                      selectedFair?.id === market.id
+                  );
+              })
+              .map((market) => (
+                  <Marker
+                      key={market.id}
+                      id={market.id}
+                      lngLat={[market.longitude, market.latitude]}
+                      anchor="bottom"
+                      onPress={() => handleMarketMarkerPress(market)}
                   >
-                    <View style={styles.marketMarkerCenter} />
-                  </View>
-                </Marker>
-              );
-            })}
+                      <View
+                          style={[
+                              styles.marketMarker,
+                              isRouteLineVisible && styles.marketMarkerInRouteView,
+                          ]}
+                      >
+                          <View style={styles.marketMarkerCenter} />
+                      </View>
+                  </Marker>
+              ))}
 
             {/* User location marker */}
             {userLocation && (
@@ -472,6 +747,38 @@ export default function MapScreen() {
                 </View>
               </Marker>
             )}
+
+            {isRouteLineVisible && selectedFair && (
+              <>
+                  {/* Point A - Route origin */}
+                  <Marker
+                      id="route-origin-marker"
+                      lngLat={[
+                          ROUTE_TEST_ORIGIN.longitude,
+                          ROUTE_TEST_ORIGIN.latitude,
+                      ]}
+                      anchor="center"
+                  >
+                      <View style={[styles.routeEndpointMarker, styles.routeOriginMarker]}>
+                          <Text style={styles.routeEndpointText}>A</Text>
+                      </View>
+                  </Marker>
+
+                  {/* Point B - Selected market */}
+                  <Marker
+                      id="route-destination-marker"
+                      lngLat={[
+                          selectedFair.longitude,
+                          selectedFair.latitude,
+                      ]}
+                      anchor="center"
+                  >
+                      <View style={[styles.routeEndpointMarker, styles.routeDestinationMarker]}>
+                          <Text style={styles.routeEndpointText}>B</Text>
+                      </View>
+                  </Marker>
+              </>
+          )}
           </Map>
         ) : (
           <View style={[styles.map, styles.mapMessage]}>
@@ -703,5 +1010,43 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 4,
     elevation: 5,
-},
+  },
+
+  marketMarkerInRouteView: {
+    backgroundColor: '#B8ADA6',
+    opacity: 0.6,
+  },
+
+  routeEndpointMarker: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    shadowColor: '#000',
+    shadowOffset: {
+        width: 0,
+        height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 7,
+  },
+
+  routeOriginMarker: {
+    backgroundColor: '#2878D0',
+  },
+
+  routeDestinationMarker: {
+    backgroundColor: '#C64F23',
+  },
+
+  routeEndpointText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
 });
