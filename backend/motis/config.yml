@@ -1,0 +1,34 @@
+
+server:
+  host: 0.0.0.0
+  port: 8090
+  web_folder: ui
+
+osm: portugal-latest.osm.pbf
+
+timetable:
+  first_day: TODAY
+  num_days: 365
+  with_shapes: true
+  adjust_footpaths: true
+  link_stop_distance: 100
+  max_footpath_length: 15
+
+  datasets:
+    cp:
+      path: cp-gtfs.zip
+
+    metro:
+      path: metro-gtfs.zip
+
+    stcp:
+      path: stcp-gtfs.zip
+
+street_routing: true
+osr_footpath: true
+
+geocoding: true
+reverse_geocoding: false
+
+logging:
+  log_level: info

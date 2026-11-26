@@ -1,6 +1,7 @@
 import axios from 'axios';
 import logger from '../utils/logger.js';
 import { calculateRoutes } from '../services/openrouteservice.service.js';
+import { calculatePublicTransportRoutes } from '../services/motis.service.js';
 
 const isValidCoordinate = (value, min, max) => 
     typeof value === 'number' &&
@@ -11,7 +12,7 @@ const isValidCoordinate = (value, min, max) =>
 const isValidPoint = (point) => 
     point &&
     isValidCoordinate(point.latitude, -90, 90) &&
-    isValidCoordinate(point.longitude, -100, 100);
+    isValidCoordinate(point.longitude, -180, 180);
 
 export const getRoutes = async(req, res) => {
     try {
@@ -109,5 +110,101 @@ export const getRoutes = async(req, res) => {
     return res.status(502).json({
         error: 'Não foi possível calcular as rotas neste momento.',
     });
+    }
+}
+
+export const getPublicTransportRoutes = async(req, res) => {
+    try {
+        logger.info('POST /routes/public-transport received');
+
+        const {origin, destination, time, arriveBy, maxTransfers} = req.body ?? {};
+
+        if (!isValidPoint(origin) || !isValidPoint(destination)) {
+             return res.status(400).json({
+                error: 'Invalid coordinates: Both origin and destination must contain valid latitude and longitude values'
+            });
+        }
+
+        if (time !== undefined && (
+            typeof time !== 'string' ||
+            !Number.isFinite(Date.parse(time))
+        )) {
+            return res.status(400).json({
+                error: 'Invalid time: Provide a valid ISO 8601 date-time'
+            });
+        }
+
+        if (arriveBy !== undefined && typeof arriveBy !== 'boolean') {
+            return res.status(400).json({
+                error: 'arriveBy must be a boolean'
+            });
+        }
+
+        if (maxTransfers !== undefined && (
+            !Number.isInteger(maxTransfers) ||
+            maxTransfers < 0 ||
+            maxTransfers > 10
+        )) {
+            return res.status(400).json({
+                error: 'maxTransfers must be an integer between 0 and 10'
+            });
+        }
+
+        const routes = await calculatePublicTransportRoutes(origin, destination, { time, arriveBy, maxTransfers });
+
+        logger.info('POST /routes/public-transport - Routes calculated successfully.');
+
+        return res.status(200).json({
+            message: routes.itineraries.length > 0
+                ? 'Public transport routes calculated successfully.'
+                : 'No public transport itineraries found.',
+            data: routes
+        });
+    } catch (err) {
+        const providerStatus = axios.isAxiosError(err) ? err.response?.status : undefined;
+
+        logger.error({
+            message: err.message,
+            providerStatus,
+            errorCode: err.code
+        }, 'POST /routes/public-transport - Failed.');
+        
+        if (err.code === 'ECONNABORTED' || err.code === 'ETIMEDOUT') {
+            return res.status(504).json({
+                error: 'The public-transport routing request timed out'
+            });
+        }
+
+        if (
+            err.code === 'ECONNREFUSED' ||
+            err.code === 'ENOTFOUND' ||
+            err.code === 'EHOSTUNREACH'
+        ) {
+            return res.status(503).json({
+                error: 'The public-transport routing service is unavailable'
+            });
+        }
+
+        if (providerStatus === 400 || providerStatus === 422) {
+            return res.status(422).json({
+                error: 'MOTIS could not calculate a journey for the supplied locations.'
+            });
+        }
+
+        if (providerStatus === 404) {
+            return res.status(502).json({
+                error: 'MOTIS returned an unexpected response.'
+            });
+        }
+
+        if (providerStatus >= 500) {
+            return res.status(503).json({
+                error: 'The public-transport routing service is temporarily unavailable.'
+            });
+        }
+
+        return res.status(502).json({
+            error: 'Unable to calculate public-transport routes at this time.'
+        });
     }
 }

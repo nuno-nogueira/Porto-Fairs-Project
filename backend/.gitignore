@@ -31,3 +31,9 @@ Thumbs.db
 .vscode/
 .eslintcache
 .npm/
+
+# MOTIS - local datasets and generated data
+/motis/data/
+/motis/*.osm.pbf
+/motis/*.zip
+/motis/motis.exe

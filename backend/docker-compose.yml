@@ -9,8 +9,8 @@ services:
       NODE_ENV: ${NODE_ENV:-development}
       PORT: 3000
       HOST: 0.0.0.0
-      MONGO_URL: ${MONGO_URL_USERS:?Set MONGO_URL_USERS in the root .env file}
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the root .env file}
+      MONGO_URL: ${MONGO_URL_USERS}
+      JWT_SECRET: ${JWT_SECRET}
     expose:
       - "3000"
     networks:
@@ -24,8 +24,8 @@ services:
       NODE_ENV: ${NODE_ENV:-development}
       GRAPHQL_PORT: 3001
       BIND_HOST: 0.0.0.0
-      MONGO_URL: ${MONGO_URL_MARKETS:?Set MONGO_URL_MARKETS in the root .env file}
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the root .env file}
+      MONGO_URL: ${MONGO_URL_MARKETS}
+      JWT_SECRET: ${JWT_SECRET}
       USERS_SERVICE_URL: http://users-service:3000
       RATINGS_SERVICE_URL: http://ratings-service:3004
     expose:
@@ -41,8 +41,8 @@ services:
       NODE_ENV: ${NODE_ENV:-development}
       PORT: 3004
       HOST: 0.0.0.0
-      MONGO_URL: ${MONGO_URL_RATINGS:?Set MONGO_URL_RATINGS in the root .env file}
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the root .env file}
+      MONGO_URL: ${MONGO_URL_RATINGS}
+      JWT_SECRET: ${JWT_SECRET}
       MARKETS_SERVICE_URL: http://markets-service:3001
     expose:
       - "3004"
@@ -54,7 +54,7 @@ services:
       context: ./favorites-service
     restart: unless-stopped
     environment:
-      SPRING_DATA_MONGODB_URI: ${MONGO_URL_FAVORITES:?Set MONGO_URL_FAVORITES in the root .env file}
+      SPRING_DATA_MONGODB_URI: ${MONGO_URL_FAVORITES}
       SERVER_PORT: 3003
     expose:
       - "3003"
@@ -69,8 +69,8 @@ services:
       NODE_ENV: ${NODE_ENV:-development}
       PORT: 3002
       HOST: 0.0.0.0
-      MONGO_URL: ${MONGO_URL_NOTIFICATIONS:?Set MONGO_URL_NOTIFICATIONS in the root .env file}
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the root .env file}
+      MONGO_URL: ${MONGO_URL_NOTIFICATIONS}
+      JWT_SECRET: ${JWT_SECRET}
       USERS_SERVICE_URL: http://users-service:3000
     expose:
       - "3002"
@@ -87,8 +87,8 @@ services:
       NODE_ENV: ${NODE_ENV:-development}
       PORT: 3005
       HOST: 0.0.0.0
-      MONGO_URL: ${MONGO_URL_NOTES:?Set MONGO_URL_NOTES in the root .env file}
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the root .env file}
+      MONGO_URL: ${MONGO_URL_NOTES}
+      JWT_SECRET: ${JWT_SECRET}
     expose:
       - "3005"
     networks:
@@ -102,10 +102,46 @@ services:
       NODE_ENV: ${NODE_ENV:-development}
       PORT: 3006
       HOST: 0.0.0.0
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the root .env file}
-      OPENROUTESERVICE_API_KEY: ${OPENROUTESERVICE_API_KEY:?Set OPENROUTESERVICE_API_KEY in the root .env file}
+      JWT_SECRET: ${JWT_SECRET}
+      OPENROUTESERVICE_API_KEY: ${OPENROUTESERVICE_API_KEY}
+      MOTIS_BASE_URL: ${MOTIS_BASE_URL}
     expose:
       - "3006"
+    networks:
+      - feiras-net
+
+  otp-build:
+    image: feiras-otp:2.10.0
+    build:
+      context: ./otp
+      args:
+        OTP_VERSION: "2.10.0"
+    profiles:
+      - otp-build
+    command: ["--build", "--save", "."]
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xmx8G"
+    volumes:
+      - ./otp/graph:/var/opentripplanner
+    networks:
+      - feiras-net
+
+  otp:
+    image: feiras-otp:2.10.0
+    build:
+      context: ./otp
+      args:
+        OTP_VERSION: "2.10.0"
+    profiles:
+      - otp
+    command: ["--load", "--serve", "."]
+    restart: unless-stopped
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xmx8G"
+    ports:
+      - "127.0.0.1:${OTP_PORT:-8081}:8080"
+    volumes:
+      - ./otp/graph:/var/opentripplanner
     networks:
       - feiras-net
 
