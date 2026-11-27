@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 import axios from "axios";
+import { useFavorite } from "@/hooks/useFavorite";
 
 // Component imports
 import { SellerHeader } from "@/components/seller-components/SellerHeader";
@@ -98,6 +99,13 @@ const VendorPage = () => {
 
   const seller = currentResult?.seller ?? null;
 
+  const {
+    isFavorite,
+    loading: favoriteLoading,
+    updating: favoriteUpdating,
+    toggleFavorite
+  } = useFavorite("seller", seller?.id ?? null);
+
   const error = !id ? "ID de vendedor inválido" : currentResult?.error;
 
   const {
@@ -137,7 +145,7 @@ const VendorPage = () => {
 
   const isOwner = !!user && user._id === seller.id;
 
-  const handleToggleFavorite = () => {
+  const handleToggleFavorite = async() => {
     if (!user) {
       Alert.alert(
         "Iniciar Sessão", 
@@ -160,8 +168,17 @@ const VendorPage = () => {
 
       return;
     }
-    // WORK IN PROGRESS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    Alert.alert("Favoritos", "WORK IN PROGRESS!")
+    
+    try {
+        await toggleFavorite();
+    } catch (err) {
+        console.error("Error toggling seller favorite:", err);
+
+        Alert.alert(
+            "Favoritos",
+            "Não foi possível atualizar os teus favoritos. Tenta novamente."
+        );
+    }
   };
 
   const fallbackImage = require("../../assets/images/auth/market-stall.png");
@@ -180,7 +197,7 @@ const VendorPage = () => {
               location: seller.location || "Localização não encontrada"
             }}
             imageUri={seller.avatar || fallbackImage}
-            liked={false}
+            liked={isFavorite}
             onToggleLike={handleToggleFavorite}
             showFavorite={!isOwner}
             />

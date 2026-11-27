@@ -7,8 +7,8 @@ import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 
 export interface SellerItemData {
-  id: string;
-  full_name: string;
+  id: string | number;
+  name: string;
   avatar: string | null;
 }
 
@@ -55,7 +55,7 @@ export function SellerCard({ item, onPress }: SellerCardProps) {
       style={styles.name}
       numberOfLines={2}
       type='small'>
-        {item.full_name}
+        {item.name}
       </ThemedText>
       
     </TouchableOpacity>

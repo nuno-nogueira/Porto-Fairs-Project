@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   ScrollView,
@@ -10,12 +10,18 @@ import {
   Modal,
   TextInput,
   Alert,
+  ActivityIndicator
 } from "react-native";
-import { router } from 'expo-router'; 
+import { router, Redirect, useFocusEffect } from 'expo-router'; 
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { Redirect } from 'expo-router';
-import { useAuth } from '@/context/AuthContext';
+import axios from "axios";
+
+import { gql } from "@apollo/client";
+import { useQuery } from "@apollo/client/react";
+
+import api from "@/api/axios";
+import { useAuth } from '@/context/AuthContext'; 
 
 // Import components
 import { ProfileHeader } from "@/components/profile-components/ProfileHeader";
@@ -29,20 +35,82 @@ import { Colors } from "@/constants/theme";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 
-import { MARKETS, SELLERS, POSTS } from "@/constants/data";
+import { SELLERS, POSTS } from "@/constants/data";
+
+// fetch the markets from the Markets GraphQL service
+const GET_MARKETS = gql`
+  query GetMarkets {
+    markets {
+      id
+      name
+      openingHours
+      address
+      imageUrl
+    }
+  }
+`;
+
+interface ProfileMarket {
+  id: string | number;
+  name: string;
+  openingHours ?: string | null;
+  address ?: string | null;
+  imageUrl ?: string | null;
+}
+
+interface MarketsQueryData {
+  markets: ProfileMarket[];
+}
+
+interface FavoriteRecord {
+  id: string | number;
+  userId: string;
+  targetValue: "market" | "seller";
+  targetId: string;
+}
+
+interface ServiceResponse<T> {
+  message ?: string;
+  data: T | null;
+}
+
+// response from GET /users/sellers/:id
+interface SellerProfile {
+  id: string | number;
+  full_name: string;
+  description: string;
+  avatar: string | null;
+} 
 
 export default function ProfileScreen() {
   const colorScheme = useColorScheme() ?? "light";
   const brandColors = Colors[colorScheme];
 
-  //states
-  const [favoriteMarkets, setFavoriteMarkets] = useState(MARKETS);
+  const { user, loading } = useAuth();
+  const isSeller = user?.role === "seller";
+
+  // profile states
   const [profileImage, setProfileImage] = useState(SELLERS[0].avatar);
   const [announcements, setAnnouncements] = useState(POSTS);
-  const [modalVisible, setModalVisible] = useState(false); // control modal visibility
-  const [newPostText, setNewPostText] = useState(""); // add new post text
-  const {user, loading} = useAuth();
-  const isSeller = user?.role === "seller";
+  const [modalVisible, setModalVisible] = useState(false);
+  const [newPostText, setNewPostText] = useState("");
+
+  // favorite state
+  const [favoriteRecords, setFavoriteRecords] = useState<FavoriteRecord[]>([]);
+  const [favoriteSellers, setFavoriteSellers] = useState<SellerProfile[]>([]);
+  const [favoritesLoading, setFavoritesLoading] = useState(true);
+  const [favoritesError, setFavoritesError] = useState<string | null>(null);
+
+  // retrieve markets from GraphQL
+  const {
+    data: marketsResponse,
+    loading: marketsLoading,
+    error: marketsError
+  } = useQuery<MarketsQueryData>(GET_MARKETS, {
+    fetchPolicy: "cache-and-network"
+  });
+
+  const markets = marketsResponse?.markets ?? [];
 
   // Pick image from gallery
   const handlePickImage = async () => {
@@ -57,9 +125,118 @@ export default function ProfileScreen() {
       setProfileImage(result.assets[0].uri);
     }
   };
-  // Remove market from favorites
-  function RemoveMarketFromFav(id: number) {
-    setFavoriteMarkets((currentList) => currentList.filter((m) => m.id !== id));
+
+  /*
+   * load the current user's favourite records whenever the profile
+   * screen becomes focused
+   */
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?._id) return;
+
+      let isActive = true;
+
+      const loadFavorites = async () => {
+        try {
+          let records: FavoriteRecord[] = [];
+
+          try {
+            const response = await api.get<ServiceResponse<FavoriteRecord[]>>(
+              `/favorites/user/${user._id}`
+            );
+
+            records = response.data?.data ?? [];
+          } catch (error) {
+            // The favourites service returns 404 when the user has no favourites.
+            if (
+              axios.isAxiosError(error) &&
+              error.response?.status === 404
+            ) {
+              records = [];
+            } else {
+              throw error;
+            }
+          }
+
+          // Get the details of each favourite seller.
+          const sellerRecords = records.filter(
+            (favorite) => favorite.targetValue === "seller"
+          );
+
+          const sellerResults = await Promise.all(
+            sellerRecords.map(async (favorite) => {
+              try {
+                const response = await api.get<SellerProfile>(
+                  `/users/sellers/${favorite.targetId}`
+                );
+
+                return response.data;
+              } catch (error) {
+                console.error(
+                  `[Favorites] Could not load seller ${favorite.targetId}:`,
+                  error
+                );
+
+                return null;
+              }
+            })
+          );
+
+          const sellers = sellerResults.filter(
+            (seller): seller is SellerProfile => seller !== null
+          );
+
+          if (!isActive) return;
+
+          setFavoriteRecords(records);
+          setFavoriteSellers(sellers);
+          setFavoritesError(null);
+        } catch (error) {
+          console.error("[Favorites] Could not load profile favourites:", error);
+
+          if (isActive) {
+            setFavoritesError(
+              "Não foi possível carregar os teus favoritos."
+            );
+          }
+        } finally {
+          if (isActive) {
+            setFavoritesLoading(false);
+          }
+        }
+      };
+
+      void loadFavorites();
+
+      return () => {
+        isActive = false;
+      };
+    }, [user])
+  );
+
+  const favoriteMarketRecords = favoriteRecords.filter((favorite) => favorite.targetValue === "market");
+  const favoriteMarkets = favoriteMarketRecords
+    .map((favorite) => markets.find((market) => market.id === favorite.targetId))
+    .filter((market): market is ProfileMarket => market !== undefined);
+  
+  // remove a market from the user's favorite
+  const removeMarketFromFavorites = async(marketId: string | number) => {
+    const favorite = favoriteRecords.find(
+      (record) =>
+        record.targetValue === 'market' &&
+        record.targetId === marketId.toString()
+    );
+
+    if (!favorite) return;
+
+    try {
+      await api.delete(`/favorites/${favorite.id}`);
+
+      setFavoriteRecords((currentRecords) => currentRecords.filter((record) => record.id !== favorite.id));
+    } catch (err) {
+      console.error("[Favorites] Could not remove favorite market ->", err);
+      
+    }
   }
 
   // Create announcement
@@ -75,12 +252,15 @@ export default function ProfileScreen() {
       date: "Agora mesmo",
     };
 
-    setAnnouncements([newPost, ...announcements]);
+    setAnnouncements((currentAnnouncements) => [
+      newPost,
+      ...currentAnnouncements,
+    ]);
     setNewPostText(""); 
     setModalVisible(false);
   }
 
-  function deleteAnnouncement(id: number) {
+  function deleteAnnouncement(id: number | string) {
     Alert.alert("Apagar", "Tens a certeza que queres apagar este anúncio?", [
       { text: "Cancelar", style: "cancel" },
       {
@@ -150,26 +330,47 @@ export default function ProfileScreen() {
             keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => (
               <MarketCard
-                item={item}
+                item={{
+                  id: item.id,
+                  title: item.name,
+                  schedule: item.openingHours || "Horário não disponível",
+                  address: item.address || "Localização não disponível",
+                  image: item.imageUrl
+                    ? { uri: item.imageUrl }
+                    : require("../../assets/images/fair-default-image.png"),
+                }}
                 onPress={(market) => {
-                  console.log("A navegar para a feira:", market.id);
                   router.push(`/market/${market.id}`);
                 }}
-                onRemove={RemoveMarketFromFav}
+                onRemove={removeMarketFromFavorites}
               />
             )}
             ListEmptyComponent={
-              <ThemedText
-                style={{ marginLeft: 20, fontStyle: "italic", color: "gray" }}
-              >
-                Ainda não tens feiras favoritas.
-              </ThemedText>
+              favoritesLoading || marketsLoading ? (
+                <ActivityIndicator
+                  size="small"
+                  color={brandColors.tint}
+                  style={{ marginLeft: 20 }}
+                />
+              ) : favoritesError || marketsError ? (
+                <ThemedText
+                  style={{ marginLeft: 20, fontStyle: "italic", color: "gray" }}
+                >
+                  Não foi possível carregar as feiras favoritas.
+                </ThemedText>
+              ) : (
+                <ThemedText
+                  style={{ marginLeft: 20, fontStyle: "italic", color: "gray" }}
+                >
+                  Ainda não tens feiras favoritas.
+                </ThemedText>
+              )
             }
             contentContainerStyle={{ paddingHorizontal: 20 }}
           />
         </View>
 
-        {/* Sellers */}
+        {/* Favorite Sellers */}
         <View style={styles.section}>
           <ThemedText type="subtitle" style={styles.sectionTitle}>
             Feirantes Favoritos
@@ -177,16 +378,43 @@ export default function ProfileScreen() {
 
           <FlatList
             horizontal
-            data={SELLERS}
+            data={favoriteSellers}
             showsHorizontalScrollIndicator={false}
             keyExtractor={(item) => item.id.toString()}
             contentContainerStyle={{ paddingHorizontal: 20 }}
             renderItem={({ item }) => (
               <SellerCard
-                item={item}
-                onPress={(seller) => console.log("Ver perfil de:", seller.name)}
+                item={{
+                  id: item.id,
+                  name: item.full_name,
+                  avatar: item.avatar ?? "",
+                }}
+                onPress={(seller) => {
+                  router.push(`/sellers/${seller.id}`);
+                }}
               />
             )}
+            ListEmptyComponent={
+              favoritesLoading ? (
+                <ActivityIndicator
+                  size="small"
+                  color={brandColors.tint}
+                  style={{ marginLeft: 20 }}
+                />
+              ) : favoritesError ? (
+                <ThemedText
+                  style={{ marginLeft: 20, fontStyle: "italic", color: "gray" }}
+                >
+                  Não foi possível carregar os feirantes favoritos.
+                </ThemedText>
+              ) : (
+                <ThemedText
+                  style={{ marginLeft: 20, fontStyle: "italic", color: "gray" }}
+                >
+                  Ainda não tens feirantes favoritos.
+                </ThemedText>
+              )
+            }
           />
         </View>
 
@@ -213,7 +441,7 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {/* became a seller */}
+        {/* become a seller */}
         {!isSeller && (
           <View style={styles.becomeSellerContainer}>
             <View style={styles.divider} />
@@ -330,12 +558,14 @@ const styles = StyleSheet.create({
     padding: 20,
     marginTop: 20,
   },
+
   divider: {
     height: 1,
     backgroundColor: "#E0E0E0",
     marginBottom: 30,
     width: "100%",
   },
+
   placeholderImage: {
     height: 100,
     width: "100%",
@@ -352,12 +582,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+
   modalContent: {
     width: "90%",
     padding: 20,
     borderRadius: 15,
     elevation: 5,
   },
+
   input: {
     borderWidth: 1,
     borderRadius: 8,
@@ -366,6 +598,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     minHeight: 100,
   },
+
   modalButtons: {
     flexDirection: "row",
     justifyContent: "flex-end",

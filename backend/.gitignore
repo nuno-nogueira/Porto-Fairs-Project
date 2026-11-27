@@ -34,6 +34,7 @@ Thumbs.db
 
 # MOTIS - local datasets and generated data
 /motis/data/
+/motis/data-windows-2.11.4-backup
 /motis/*.osm.pbf
 /motis/*.zip
 /motis/motis.exe

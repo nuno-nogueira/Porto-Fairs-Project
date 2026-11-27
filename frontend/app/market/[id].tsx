@@ -4,6 +4,7 @@ import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '@/api/axios';
 import { useAuth } from '@/context/AuthContext';
+import { useFavorite } from "@/hooks/useFavorite";
 
 // components & themes
 import { ThemedText } from '@/components/themed-text';
@@ -86,7 +87,7 @@ export default function MarketDetailsScreen() {
 
   const theme = useColorScheme() ?? 'light';
   const currentColors = Colors[theme];
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   const {data, loading, error, refetch} = useQuery<MarketQueryData>(GET_MARKET, {
     variables: { id },
@@ -95,12 +96,56 @@ export default function MarketDetailsScreen() {
   });
 
   const market = data?.market ?? null;
+  const {
+    isFavorite,
+    loading: favoriteLoading,
+    updating: favoriteUpdating,
+    toggleFavorite
+} = useFavorite("market", market?.id ?? null);
 
   const [rating, setRating] = useState(0);
   const [isExpanded, setIsExpanded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [ratingComment, setRatingComment] = useState('');
   const [submittingRating, setSubmittingRating] = useState(false);
+
+  const handleToggleFavorite = async () => {
+    if (authLoading) return;
+
+    if (!user) {
+        Alert.alert(
+            "Iniciar Sessão",
+            "Precisas de ter uma conta para adicionar feiras aos favoritos.",
+            [
+                {
+                    text: "Cancelar",
+                    style: "cancel"
+                },
+                {
+                    text: "Iniciar Sessão",
+                    onPress: () => router.push("/login")
+                },
+                {
+                    text: "Criar Conta",
+                    onPress: () => router.push("/signup")
+                }
+            ]
+        );
+
+        return;
+    }
+
+    try {
+        await toggleFavorite();
+    } catch (err) {
+        console.error("Error toggling market favorite:", err);
+
+        Alert.alert(
+            "Favoritos",
+            "Não foi possível atualizar os teus favoritos. Tenta novamente."
+        );
+    }
+  };
 
   // Loading Screen
   if (loading && !market) {
@@ -278,9 +323,17 @@ export default function MarketDetailsScreen() {
               <TouchableOpacity style={styles.circleBtn}>
                 <Ionicons name="share-social" size={24} color={currentColors.primary} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.circleBtn}>
-                <Ionicons name="heart" size={24} color={currentColors.primary} />
-              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.circleBtn}
+                onPress={handleToggleFavorite}
+                disabled={authLoading || favoriteLoading || favoriteUpdating}
+              >
+                <Ionicons
+                    name={isFavorite ? "heart" : "heart-outline"}
+                    size={24}
+                    color={isFavorite ? "#C64F23" : currentColors.primary}
+                />
+            </TouchableOpacity>
             </View>
           </View>
         </View>

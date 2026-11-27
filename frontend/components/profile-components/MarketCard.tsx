@@ -11,7 +11,7 @@ import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
 
 export interface MarketItemData {
-  id: number;
+  id: number | string;
   title: string;
   schedule: string;
   address: string;
@@ -21,7 +21,7 @@ export interface MarketItemData {
 interface MarketCardProps {
   item: MarketItemData;
   onPress?: (item: MarketItemData) => void;
-  onRemove?: (id: number) => void;
+  onRemove?: (id: number | string) => void;
 }
 
 export function MarketCard({ item, onPress, onRemove }: MarketCardProps) {

@@ -1,37 +1,16 @@
-// Imports
-import { router } from 'expo-router';
-import React, { useState } from 'react';
-import { Text, View, StyleSheet, Image, TouchableOpacity, FlatList } from 'react-native';
-import { categoryIcons } from '@/app/(tabs)/categoryIcons';
 
-// maps categoryIcons.ts to DB
-const categoryToIcon: { [key: string]: string } = {
-    "Alimentação": "alimentacao",
-    "Peixaria": "alimentacao",
-    "Gourmet": "alimentacao",
+import React from "react";
+import {
+    Text,
+    View,
+    StyleSheet,
+    Image,
+    TouchableOpacity,
+    FlatList
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { categoryIcons } from "@/app/(tabs)/categoryIcons";
 
-    "Vestuário": "artesanato",
-    "Artesanato": "artesanato",
-    "Decoração": "artesanato",
-
-    "Velharias": "velharias",
-
-    "Cultura": "cultura",
-    "Turismo": "cultura",
-    
-    "default": "cultura" 
-};
-
-// Object Definitions
-type ItemProps = {
-    id: string; // MUDOU de number para string
-    title: string; 
-    schedule: string; 
-    address: string;
-    category: string;
-    iconKey: string;
-    onPress: (id: string) => void
-}
 interface FairItem {
     id: string;
     name: string;
@@ -41,93 +20,152 @@ interface FairItem {
     imageUrl: string;
     latitude: number;
     longitude: number;
-    // Back-end
-    title?: string;
-    county?: string;
-    category?: string;
     iconKey?: string;
-    schedule?: string;
 }
-interface MapListViewProps {
+
+interface FairListProps {
     data: FairItem[];
     onSelect: (item: FairItem) => void;
+    favoriteIds: string[];
+    updatingFavoriteIds: Set<string>;
+    onToggleFavorite: (id: string) => void;
 }
 
-// Card Item Definition
-const Item = ({id, title, schedule, address, iconKey}: ItemProps) => {
-    // Heart Icon state
-    const [isFavorite, setIsFavorite] = useState(false);
-    
-    // Change state
-    const handleFavorite = () => {
-        setIsFavorite(prev => !prev);
-    };
-    
-    // Change Heart Icon on click
-    const favoriteIconSource = isFavorite 
-    ? require('../../assets/map-icons/favorite-icon.png')
-    : require('../../assets/map-icons/favorite-outlined-icon.png')
-    
-    return(
-    <TouchableOpacity
-    style={styles.card}
-    onPress={() => {router.push(`/market/${id}`)}}
-    >
-        <View>
-            <Image
-                style={styles.image}
-                source={require('../../assets/images/fair-default-image.png')}
-            />
-        </View>
-        <View style={styles.cardContent}>
-            <View style={{flexDirection: 'row'}}>
-                <Text style={styles.schedule}>{schedule}</Text>
-                <TouchableOpacity onPress={handleFavorite} style={{position: 'absolute'}}>
-                    <Image style={styles.favoriteIcon} source={favoriteIconSource}/>
-                </TouchableOpacity>
-            </View>
-            <Text style={styles.title}>{title}</Text>
-            <View style={styles.addressDiv}>
-                <Image
-                    source={require('../../assets/map-icons/address-icon.png')}
-                    style={styles.locationIcon}
-                />
-                <Text style={styles.address}>{address}</Text>
-            </View>
-            <View style={styles.categoriesDiv}>
-                <View style={styles.categoryIcon}>
-                    <Image
-                        source={categoryIcons[iconKey] || categoryIcons.default}
-                        style={{ width: 18, height: 18, resizeMode: "contain"}}
-                    />
-                </View>
-            </View>
-        </View>
-    </TouchableOpacity>
-    )
+const categoryToIcon: Record<string, string> = {
+    "Alimentação": "alimentacao",
+    "Vestuário": "artesanato",
+    "Velharias": "velharias",
+    "Cultura": "cultura",
+    "default": "cultura"
+};
+
+interface FairCardProps {
+    item: FairItem;
+    onSelect: () => void;
+    isFavorite: boolean;
+    isUpdating: boolean;
+    onToggleFavorite: () => void;
 }
 
-// Fair List Component Definition
-export default function FairList({ data, onSelect }: MapListViewProps) {
+function FairCard({
+    item,
+    onSelect,
+    isFavorite,
+    isUpdating,
+    onToggleFavorite
+}: FairCardProps) {
+    const iconKey =
+        item.iconKey ??
+        categoryToIcon[item.categories?.[0] ?? ""] ??
+        categoryToIcon.default;
+
     return (
-        <FlatList<FairItem>
-            data={data}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => {
-                const category = item.categories?.[0] || "default";
+        <View style={styles.card}>
 
-                const iconKey =
-                    categoryToIcon[category] || categoryToIcon.default;
+            <TouchableOpacity
+                style={styles.cardContent}
+                activeOpacity={0.8}
+                onPress={onSelect}
+            >
+                <Image
+                    style={styles.image}
+                    source={
+                        item.imageUrl
+                            ? { uri: item.imageUrl }
+                            : require("../../assets/images/fair-default-image.png")
+                    }
+                    resizeMode="cover"
+                />
+
+                <View style={styles.details}>
+
+                    <Text
+                        style={styles.schedule}
+                        numberOfLines={2}
+                        ellipsizeMode="tail"
+                    >
+                        {item.openingHours || "Horário não disponível"}
+                    </Text>
+
+                    <Text
+                        style={styles.title}
+                        numberOfLines={2}
+                    >
+                        {item.name}
+                    </Text>
+
+                    <View style={styles.addressDiv}>
+                        <Image
+                            source={require("../../assets/map-icons/address-icon.png")}
+                            style={styles.locationIcon}
+                        />
+
+                        <Text
+                            style={styles.address}
+                            numberOfLines={2}
+                            ellipsizeMode="tail"
+                        >
+                            {item.address}
+                        </Text>
+                    </View>
+
+                    <View style={styles.categoriesDiv}>
+                        <View style={styles.categoryIcon}>
+                            <Image
+                                source={categoryIcons[iconKey]}
+                                resizeMode="contain"
+                            />
+                        </View>
+                    </View>
+                </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+                style={styles.favoriteButton}
+                onPress={onToggleFavorite}
+                disabled={isUpdating}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={
+                    isFavorite
+                        ? "Remover dos favoritos"
+                        : "Adicionar aos favoritos"
+                }
+            >
+                <Ionicons
+                    name={isFavorite ? "heart" : "heart-outline"}
+                    size={23}
+                    color={isFavorite ? "#C64F23" : "#858080"}
+                />
+            </TouchableOpacity>
+        </View>
+    );
+}
+
+export default function FairList({
+    data,
+    onSelect,
+    favoriteIds,
+    updatingFavoriteIds,
+    onToggleFavorite
+}: FairListProps) {
+
+    return (
+        <FlatList
+            data={data}
+            keyExtractor={(item) => String(item.id)}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContent}
+            renderItem={({ item }) => {
+                const id = String(item.id);
 
                 return (
-                    <Item
-                        id={item.id}
-                        title={item.name}
-                        schedule={item.openingHours}
-                        address={item.address}
-                        category={category}
-                        iconKey={iconKey}
-                        onPress={() => onSelect(item)}
+                    <FairCard
+                        item={item}
+                        onSelect={() => onSelect(item)}
+                        isFavorite={favoriteIds.includes(id)}
+                        isUpdating={updatingFavoriteIds.has(id)}
+                        onToggleFavorite={() => onToggleFavorite(id)}
                     />
                 );
             }}
@@ -136,71 +174,101 @@ export default function FairList({ data, onSelect }: MapListViewProps) {
 }
 
 const styles = StyleSheet.create({
+    listContent: {
+        paddingHorizontal: 10,
+        paddingBottom: 15
+    },
+
+    card: {
+        flexDirection: "row",
+        position: "relative",
+        width: "100%",
+        padding: 8,
+        marginBottom: 10,
+        borderRadius: 15,
+        backgroundColor: "#FFFFFF"
+    },
+
     cardContent: {
+        flexDirection: "row",
+        flex: 1,
+        minWidth: 0
+    },
+
+    image: {
+        width: 105,
+        height: 110,
+        borderRadius: 15,
+        backgroundColor: "#F0F0F0"
+    },
+
+    details: {
         flex: 1,
         minWidth: 0,
-        paddingRight: 0
+        paddingLeft: 12,
+        paddingRight: 38
     },
-    image: {
-        borderTopLeftRadius: 15,
-        borderTopRightRadius: 15,
-        borderBottomLeftRadius: 15,
-        borderBottomRightRadius: 15,
-    },
-    card: {
-        flexDirection: 'row',
-        padding: 5,
-        width: '100%',
-        marginBottom: 10,
-        borderTopLeftRadius: 15,
-        borderTopRightRadius: 15,
-        borderBottomLeftRadius: 15,
-        borderBottomRightRadius: 15,
-        backgroundColor: 'white'
-    },
+
     schedule: {
-        color: '#F88B72',
+        color: "#F88B72",
         fontSize: 12,
-        marginLeft: 15,
-        marginTop: 5
+        lineHeight: 16,
+        marginTop: 3,
+        marginBottom: 3,
+        minWidth: 0,
+        flexShrink: 1
     },
-    favoriteIcon: {
-        marginLeft: 180,
-        marginTop: 5
-    },
+
     title: {
-        fontWeight: 'bold',
+        fontWeight: "bold",
         fontSize: 16,
-        padding: 5,
-        marginLeft: 10,
-        marginTop: 5,
-        flexShrink: 1,
-        flexWrap: 'wrap'
+        paddingVertical: 4
     },
-    locationIcon: {
-        marginLeft: 12,
-        marginTop: 5
-    },
+
     addressDiv: {
-        flexDirection: 'row'
+        flexDirection: "row",
+        alignItems: "flex-start",
+        minWidth: 0
     },
+
+    locationIcon: {
+        width: 13,
+        height: 13,
+        marginTop: 3,
+        marginRight: 5
+    },
+
     address: {
+        flex: 1,
+        minWidth: 0,
         fontSize: 12,
-        marginTop: 5,
-        paddingRight: 25,
-        paddingLeft: 5,
+        lineHeight: 16,
+        color: "#666666"
     },
+
     categoriesDiv: {
-        padding: 10,
+        paddingTop: 8
     },
+
     categoryIcon: {
         width: 30,
         height: 30,
-        padding: 12,
-        borderColor: '#C64F23',
-        borderWidth: 0.5,
+        padding: 5,
+        borderColor: "#C64F23",
+        borderWidth: 1,
         borderRadius: 20,
-        alignItems: 'center',
-        justifyContent: 'center'
+        alignItems: "center",
+        justifyContent: "center"
+    },
+
+    favoriteButton: {
+        position: "absolute",
+        top: 10,
+        right: 10,
+        width: 32,
+        height: 32,
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 2
     }
-})
+});

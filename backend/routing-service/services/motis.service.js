@@ -6,7 +6,7 @@ const MOTIS_BASE_URL = (
 ).replace(/\/+$/, '');
 
 export const calculatePublicTransportRoutes = async(origin, destination, options = {}) => {
-    const {time, arriveBy, maxTransfers} = options;
+    const {time, arriveBy = false, maxTransfers, searchWindow = 3600} = options;
 
     const params = new URLSearchParams();
 
@@ -31,19 +31,28 @@ export const calculatePublicTransportRoutes = async(origin, destination, options
     // request geomtry and details for map visiualization
     params.set('detailedLegs', 'true');
     params.set('detailedTransfers', 'true');
-
     params.set('joinInterlineLegs', 'false');
 
     params.set('language', 'pt');
 
-    // optional departure & arrival times
-    if (time) params.set('time', time);
+    // explicit departure/arrival time
+    params.set('time', time || new Date().toISOString());
 
-    if (typeof arriveBy === 'boolean') params.set('arriveBy', String(arriveBy));
+    params.set('arriveBy', String(arriveBy));
 
-    if(Number.isInteger(maxTransfers)) params.set('maxTransfers', String(maxTransfers));
+    params.set('searchWindow', String(searchWindow));
+
+    if(Number.isInteger(maxTransfers) && maxTransfers >= 0) params.set('maxTransfers', String(maxTransfers));
 
     const url = `${MOTIS_BASE_URL}/api/v6/plan?${params.toString()}`;
+
+    logger.info({
+        url,
+        origin,
+        destination,
+        searchWindow,
+        time: params.get('time')
+    }, 'Requesting public transport routes from MOTIS.');
 
     const response = await axios.get(url, {
         headers: {
