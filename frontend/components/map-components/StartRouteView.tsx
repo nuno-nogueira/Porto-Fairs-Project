@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ImageSourcePropType, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import type { RouteCalculation, TransportMode } from '@/types/Route';
+import type { RouteCalculation, TransportMode, MotisPlanResponse } from '@/types/Route';
 import {getRouteSummary, getRouteDurationLabel} from '@/utils/routeFormatting';
 import { OPENROUTESERVICE_ATTRIBUTION } from '@/utils/routeFormatting';
 
@@ -25,11 +25,16 @@ interface StartRouteProps {
     fair: FairItem;
     onBeginRoute: () => void;
     onBack: () => void;
+
     routeInfo: RouteCalculation | null;
+    transitRoutes: MotisPlanResponse | null;
+
     routeLoading: boolean;
     routeError: string | null;
+
     isAuthenticated: boolean;
     authLoading: boolean;
+
     selectMode: TransportMode;
     onModeChange: (mode: TransportMode) => void;
 }
@@ -93,6 +98,7 @@ export default function StartRoute({
     isAuthenticated,
     authLoading,
     selectMode,
+    transitRoutes,
     onModeChange
 }: StartRouteProps) {
     const [isDefaultOrder, setIsDefaultOrder] = useState(true);
@@ -188,9 +194,13 @@ export default function StartRoute({
             </View>
         )
     }
-    const selectedSummary = getRouteSummary(selectMode, routeInfo);
-    const selectedDistance = selectedSummary?.distance ?? (routeLoading ? 'A calcular...' : '--');
-    const selectedArrival = selectedSummary?.arrivalTime ?? (routeLoading ? 'A calcular...' : '--');
+    const selectedSummary = getRouteSummary(selectMode, routeInfo, transitRoutes);
+
+    const isSelectedLoading = routeLoading;
+    const selectedError = routeError;
+
+    const selectedDistance = selectedSummary?.distance ?? (isSelectedLoading ? 'A calcular...' : '--');
+    const selectedArrival = selectedSummary?.arrivalTime ?? (isSelectedLoading ? 'A calcular...' : '--');
     const selectedAttribution =
     selectMode !== 'transit' && routeInfo?.[selectMode]
         ? OPENROUTESERVICE_ATTRIBUTION
@@ -274,7 +284,12 @@ export default function StartRoute({
                                     isSelected && styles.activeTransportLabel,
                                 ]}
                             >
-                                {getRouteDurationLabel(option.mode, routeInfo, routeLoading)}
+                                {getRouteDurationLabel(
+                                    option.mode,
+                                    routeInfo,
+                                    routeLoading,
+                                    transitRoutes
+                                )}
                             </Text>
 
                         </TouchableOpacity>
@@ -296,12 +311,12 @@ export default function StartRoute({
                 </View>
             </View>
 
-            {routeLoading && (
+            {isSelectedLoading && (
                 <Text style={styles.routeStatusText}>A calcular percursos...</Text>
             )}
 
-            {routeError && (
-                <Text style={styles.routeErrorText}>{routeError}</Text>
+            {selectedError && (
+                <Text style={styles.routeErrorText}>{}</Text>
             )}
 
             {selectedAttribution && (
@@ -348,9 +363,9 @@ export default function StartRoute({
 
             { /* Start Route */ }
             <TouchableOpacity
-                style={[styles.startRouteButton, routeLoading && styles.disabledButton]}
+                style={[styles.startRouteButton, isSelectedLoading && styles.disabledButton]}
                 onPress={onBeginRoute}
-                disabled={routeLoading}
+                disabled={isSelectedLoading}
                 activeOpacity={0.85}
                 accessibilityRole='button'
             >

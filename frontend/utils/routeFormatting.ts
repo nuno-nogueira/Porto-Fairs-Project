@@ -1,16 +1,9 @@
-import type { RouteCalculation, TransportMode } from "@/types/Route";
+import type { MotisPlanResponse, RouteCalculation, TransportMode } from "@/types/Route";
 
 export interface RouteSummary {
     distance: string;
     duration: string;
     arrivalTime: string;
-}
-
-// TEMPORARY!!!!!!!!!!!!
-export const STATIC_TRANSIT_ROUTE: RouteSummary = {
-    distance: '4.2km',
-    duration: '30 min',
-    arrivalTime: 'Chegada às 13:03'
 }
 
 export const OPENROUTESERVICE_ATTRIBUTION = '© openrouteservice.org by HeiGIT | Map data © OpenStreetMap contributors';
@@ -45,8 +38,46 @@ export const formatArrivalTime = (durationSeconds: number): string => {
     return `Chegada às ${time}`;
 }
 
-export const getRouteSummary = (mode: TransportMode, routes: RouteCalculation | null): RouteSummary | null => {
-    if (mode === 'transit') return STATIC_TRANSIT_ROUTE;
+const formatTransitArrivalTime = (endTime: string): string => {
+    const arrivalDate = new Date(endTime);
+
+    if (Number.isNaN(arrivalDate.getTime())) return '--';
+
+    const time = arrivalDate.toLocaleTimeString('pt-PT', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Europe/Lisbon'
+    });
+
+    return `Chegada às ${time}`
+}
+
+export const getRouteSummary = (mode: TransportMode, routes: RouteCalculation | null, transitRoutes: MotisPlanResponse| null = null): RouteSummary | null => {
+    if (mode === 'transit') {
+        const itinerary = transitRoutes?.itineraries[0];
+
+        if (!itinerary) return null;
+
+        const hasCompleteDistances =
+            itinerary.legs.length > 0 &&
+            itinerary.legs.every(
+                leg => 
+                    typeof leg.distance === 'number' &&
+                    Number.isFinite(leg.distance)
+            );
+
+        const totalDistance = hasCompleteDistances
+            ? itinerary.legs.reduce(
+                (total, leg) => total + (leg.distance ?? 0), 0) : null;
+
+        return{
+            distance: totalDistance !== null
+                ? formatRouteDistance(totalDistance)
+                : '--',
+            duration: formatRouteDuration(itinerary.duration),
+            arrivalTime: formatTransitArrivalTime(itinerary.endTime)
+        };
+    }
 
     const route = routes?.[mode];
 
@@ -59,8 +90,8 @@ export const getRouteSummary = (mode: TransportMode, routes: RouteCalculation | 
     }
 }
 
-export const getRouteDurationLabel = (mode: TransportMode, routes: RouteCalculation | null, loading: boolean): string => {
+export const getRouteDurationLabel = (mode: TransportMode, routes: RouteCalculation | null, loading: boolean, transitRoutes: MotisPlanResponse | null = null): string => {
     return(
-        getRouteSummary(mode, routes)?.duration ?? (loading ? 'A calcular...' : '--')
+        getRouteSummary(mode, routes, transitRoutes)?.duration ?? (loading ? 'A calcular...' : '--')
     )
 }

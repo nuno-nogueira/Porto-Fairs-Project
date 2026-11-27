@@ -19,9 +19,21 @@ import { GET_MAP_MARKETS } from '@/graphql/marketQueries';
 import type { MapMarket } from '@/types/MapMarket';
 import MapListView from '@/components/map-components/ListView';
 
-import {calculateRoutes, getRoutingErrorMessage} from '@/api/routing';
-import type { RouteCalculation } from '@/types/Route';
+import {
+    calculateRoutes,
+    calculatePublicTransportRoutes,
+    getRoutingErrorMessage
+} from '@/api/routing';
+
+import type {
+    RouteCalculation,
+    MotisPlanResponse
+} from '@/types/Route';
+
+import { decodePolyline } from '@/utils/polyline';
 import { useAuth } from '@/context/AuthContext';
+
+
 
 const STADIA_MAP_STYLE = process.env.EXPO_PUBLIC_STADIA_MAPS_API_KEY
   ? `https://tiles.stadiamaps.com/styles/alidade_smooth.json?api_key=${process.env.EXPO_PUBLIC_STADIA_MAPS_API_KEY}`
@@ -96,6 +108,13 @@ export default function MapScreen() {
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
 
+  const [transitRouteInfo, setTransitRouteInfo] =
+    useState<MotisPlanResponse | null>(null);
+  const [transitInfo, setTransitInfo] = useState<MotisPlanResponse | null>(null);
+  const [transitLoading, setTransitLoading] = useState(false);
+  const [transitError, setTransitError] = useState<string | null>(null);
+
+  const routeOrigin = userLocation ?? ROUTE_TEST_ORIGIN;
   const routeRequestIdRef = useRef(0);
   const previousCameraStateRef = useRef({
     routeVisible: false,
@@ -343,24 +362,82 @@ export default function MapScreen() {
 
   // selected route geometry
   const routeFeature = useMemo(() => {
-    if (viewMode !== 'fullRoute' || activeTransportMode === 'transit') return null;
+    if (viewMode !== 'fullRoute') return null;
 
-    const selectedRoute = routeInfo?.[activeTransportMode];
-    const coordinates = selectedRoute?.geometry.coordinates;
+    let coordinates: [number, number][] = [];
 
-    if (!coordinates || coordinates.length < 2) return null;
+    if (activeTransportMode === 'transit') {
+        const itinerary = transitRouteInfo?.itineraries?.[0];
+
+        if (!itinerary) return null;
+
+        itinerary.legs.forEach(leg => {
+            let legCoordinates: [number, number][] = [];
+
+            // Decode MOTIS geometry
+            if (leg.legGeometry?.points) {
+                try {
+                    legCoordinates = decodePolyline(
+                        leg.legGeometry.points,
+                        leg.legGeometry.precision ?? 6
+                    );
+                } catch (error) {
+                    console.warn(
+                        '[Routing] Could not decode transit leg geometry:',
+                        error
+                    );
+                }
+            }
+
+            // Fallback if geometry is unavailable
+            if (legCoordinates.length < 2) {
+                legCoordinates = [
+                    [leg.from.lon, leg.from.lat],
+                    [leg.to.lon, leg.to.lat]
+                ];
+            }
+
+            // Join the individual legs into one LineString
+            legCoordinates.forEach(coordinate => {
+                const previous = coordinates[coordinates.length - 1];
+
+                const isDuplicate = previous &&
+                    Math.abs(previous[0] - coordinate[0]) < 0.0000001 &&
+                    Math.abs(previous[1] - coordinate[1]) < 0.0000001;
+
+                if (!isDuplicate) {
+                    coordinates.push(coordinate);
+                }
+            });
+        });
+
+    } else {
+        const selectedRoute = routeInfo?.[activeTransportMode];
+
+        coordinates = selectedRoute?.geometry.coordinates ?? [];
+    }
+
+    if (coordinates.length < 2) return null;
 
     return {
-      type: 'Feature' as const,
-      properties: {transportMode: activeTransportMode},
-      geometry: {
-        type: 'LineString' as const,
-        coordinates
-      }
-    }
-  }, [viewMode, activeTransportMode, routeInfo])
+        type: 'Feature' as const,
+        properties: {
+            transportMode: activeTransportMode
+        },
+        geometry: {
+            type: 'LineString' as const,
+            coordinates
+        }
+    };
 
-  const isRouteLineVisible = routeFeature !== null;
+}, [
+    viewMode,
+    activeTransportMode,
+    routeInfo,
+    transitRouteInfo
+]);
+
+const isRouteLineVisible = routeFeature !== null;
 
   useEffect(() => {
     const camera = cameraRef.current;
@@ -451,7 +528,6 @@ export default function MapScreen() {
         selectedFair?.id,
     ]);
 
-  // Handling Card Press Button
   const handleCardPress = (fair: FairItem) => {
     // INvalidate any pending route request
     routeRequestIdRef.current += 1;
@@ -461,6 +537,10 @@ export default function MapScreen() {
     setRouteLoading(false);
     setRouteError(null);
 
+    setTransitInfo(null);
+    setTransitLoading(false);
+    setTransitError(null);
+
     setViewMode('details');
   };
 
@@ -468,7 +548,6 @@ export default function MapScreen() {
     handleCardPress(toFairItem(market));
   };
 
-  // Handling Back to List Button
   const handleBackToList = () => {
     routeRequestIdRef.current += 1;
 
@@ -476,72 +555,108 @@ export default function MapScreen() {
     setRouteLoading(false);
     setRouteError(null);
 
+    setTransitInfo(null);
+    setTransitLoading(false);
+    setTransitError(null);
+
     setViewMode('list');
     setSelectedFair(null);
   };
 
-  // Handling Back to Details
   const handleBackToDetails = () => {
     setViewMode('details');
   };
 
-  // Handling Start Route Button
-  const handleStartRoute = async() => {
+  const handleStartRoute = async () => {
     if (!selectedFair) return;
 
     setViewMode('route');
 
-    // Wait for authentication state to be restored
     if (authLoading) {
-      setRouteInfo(null);
-      setRouteLoading(false);
-      return;
+        setRouteInfo(null);
+        setTransitRouteInfo(null);
+        setRouteLoading(false);
+        return;
     }
 
-    // check if user is not authenticated
     if (!isAuthenticated) {
-      setRouteInfo(null);
-      setRouteLoading(false);
-      setRouteError(null);
-      return;
+        setRouteInfo(null);
+        setTransitRouteInfo(null);
+        setRouteLoading(false);
+        setRouteError(null);
+        return;
     }
 
-    // Reuse a route that was already calculated for a market
-    if (routeInfo) return;
+    // Reuse results only when both services have responded.
+    if (routeInfo && transitRouteInfo) return;
 
     const requestId = ++routeRequestIdRef.current;
 
+    const origin = routeOrigin;
+
+    const destination = {
+        latitude: selectedFair.latitude,
+        longitude: selectedFair.longitude
+    };
+
     setRouteInfo(null);
+    setTransitRouteInfo(null);
     setRouteLoading(true);
     setRouteError(null);
 
     try {
-      const routes = await calculateRoutes({
-        origin: ROUTE_TEST_ORIGIN,
-        destination: {
-          latitude: selectedFair.latitude,
-          longitude: selectedFair.longitude
+        const [orsResult, motisResult] = await Promise.allSettled([
+            calculateRoutes({
+                origin,
+                destination
+            }),
+
+            calculatePublicTransportRoutes({
+                origin,
+                destination,
+                time: new Date().toISOString(),
+                arriveBy: false
+            })
+        ]);
+
+        // Ignore outdated requests.
+        if (requestId !== routeRequestIdRef.current) return;
+
+        const errors: string[] = [];
+
+        if (orsResult.status === 'fulfilled') {
+            setRouteInfo(orsResult.value);
+        } else {
+            setRouteInfo(null);
+            errors.push(
+                `Percursos a pé/carro: ${getRoutingErrorMessage(orsResult.reason)}`
+            );
+            console.error('[Routing] ORS failed:', orsResult.reason);
         }
-      })
 
-      if (requestId !== routeRequestIdRef.current) return;
+        if (motisResult.status === 'fulfilled') {
+            setTransitRouteInfo(motisResult.value);
 
-      setRouteInfo(routes);
+            console.log(
+                '[Routing] MOTIS itineraries:',
+                motisResult.value.itineraries.length
+            );
+        } else {
+            setTransitRouteInfo(null);
+            errors.push(
+                `Transportes públicos: ${getRoutingErrorMessage(motisResult.reason)}`
+            );
+            console.error('[Routing] MOTIS failed:', motisResult.reason);
+        }
 
-      console.log('[Routing] Routes calculated successfully.');
-    } catch (err) {
-      if (requestId !== routeRequestIdRef.current) return;
+        setRouteError(errors.length > 0 ? errors.join('\n') : null);
 
-      const message = getRoutingErrorMessage(err);
-
-      setRouteError(message);
-      setRouteInfo(null);
-
-      console.error('[Routing] Route calculation failed:', message);
     } finally {
-      if (requestId === routeRequestIdRef.current) setRouteLoading(false);
+        if (requestId === routeRequestIdRef.current) {
+            setRouteLoading(false);
+        }
     }
-  };
+};
 
   // Handling View Route Button
   const handleRouteView = () => {
@@ -555,6 +670,10 @@ export default function MapScreen() {
     setRouteInfo(null);
     setRouteLoading(false);
     setRouteError(null);
+
+    setTransitInfo(null);
+    setTransitLoading(false);
+    setTransitError(null);
 
     setViewMode('list');
     setSelectedFair(null);
@@ -596,6 +715,7 @@ export default function MapScreen() {
       <StartRoute
         fair={selectedFair}
         routeInfo={routeInfo}
+        transitRoutes={transitRouteInfo}
         routeLoading={routeLoading}
         routeError={routeError}
         isAuthenticated={isAuthenticated}
@@ -604,17 +724,18 @@ export default function MapScreen() {
         onBeginRoute={handleRouteView}
         onModeChange={setActiveTransportMode}
         selectMode={activeTransportMode}
-    />);
+/>);
     } else if (viewMode === 'fullRoute' && selectedFair) {
-      return <FullMap
+      return (<FullMap
         fair={selectedFair}
         routeInfo={routeInfo}
+        transitRoutes={transitRouteInfo}
         routeLoading={routeLoading}
         routeError={routeError}
         onEndRoute={handleEndRoute}
         selectedMode={activeTransportMode}
         onModeChange={setActiveTransportMode}
-    />;
+/>)
     }
     return null;
   };
@@ -700,10 +821,22 @@ export default function MapScreen() {
                       'line-join': 'round',
                   }}
                   paint={{
-                      'line-color': '#C64F23',
-                      'line-width': 5,
-                      'line-opacity': 1,
-                  }}
+                    'line-color': [
+                        'match',
+                        ['get', 'mode'],
+
+                        'WALK', '#8A807C',
+                        'BUS', '#E2A400',
+                        'SUBWAY', '#2878D0',
+                        'METRO', '#2878D0',
+                        'RAIL', '#7857C5',
+                        'TRAM', '#0E9384',
+
+                        '#C64F23'
+                    ],
+                    'line-width': 5,
+                    'line-opacity': 1,
+                }}
         />
               </GeoJSONSource>
             )}

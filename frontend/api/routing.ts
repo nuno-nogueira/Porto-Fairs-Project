@@ -5,8 +5,12 @@ import type {
     RouteAPIResponse,
     CalculatedRoute,
     RouteCalculation,
+    PublicTransportRoutesRequest,
+    PublicTransportAPIResponse,
+    MotisPlanResponse,
 } from '../types/Route';
 
+// walking & driving routes
 export const calculateRoutes = async(request: CalculatedRoutesRequest): Promise<RouteCalculation> => {
     const response = await api.post<RouteAPIResponse>('/routes', request, {timeout: 20000});
 
@@ -18,6 +22,22 @@ export const calculateRoutes = async(request: CalculatedRoutesRequest): Promise<
 
     return routeData;
 } 
+
+// public transport routes
+export const calculatePublicTransportRoutes = async(request: PublicTransportRoutesRequest): Promise<MotisPlanResponse> => {
+    const response = await api.post<PublicTransportAPIResponse>(
+        '/routes/public-transport',
+        request,
+        { timeout: 40000}
+    )
+
+    const routeData = response.data?.data;
+
+    if (!routeData || !Array.isArray(routeData.itineraries)) throw new Error('Invalid MOTIS response -> missing itinerary info');
+
+    return routeData;
+}
+
 
 export const getRoutingErrorMessage = (error: unknown): string => {
     if (axios.isAxiosError(error)) {

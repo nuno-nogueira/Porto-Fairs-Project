@@ -1,4 +1,3 @@
-import React from 'react';
 import {
     View,
     Text,
@@ -9,8 +8,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import type { RouteCalculation, TransportMode } from '@/types/Route';
+import type { RouteCalculation, TransportMode, MotisPlanResponse } from '@/types/Route';
 import {getRouteSummary, getRouteDurationLabel} from '@/utils/routeFormatting';
+
 
 // Item Definition
 interface FairItem {
@@ -23,9 +23,13 @@ interface FairItem {
 interface FullMapViewProps {
     fair: FairItem;
     onEndRoute: () => void;
+
     routeInfo: RouteCalculation | null;
+    transitRoutes: MotisPlanResponse | null;
+
     routeLoading: boolean;
     routeError: string | null;
+
     selectedMode: TransportMode;
     onModeChange: (mode: TransportMode) => void;
 }
@@ -57,12 +61,25 @@ export default function FullMap({
     routeLoading,
     routeError,
     selectedMode,
+    transitRoutes,
     onModeChange,
 }: FullMapViewProps) {
-    const displayedRoute = getRouteSummary(selectedMode, routeInfo);
-    const displayedDuration = getRouteDurationLabel(selectedMode, routeInfo, routeLoading);
-    const displayedDistance = displayedRoute?.distance ?? (routeLoading ? 'A calcular...' : '--');
-    const displayedArrival = displayedRoute?.arrivalTime ?? (routeLoading ? 'A calcular...' : '--');
+    const displayedRoute = getRouteSummary(selectedMode, routeInfo, transitRoutes);
+
+    const isSelectedLoading = routeLoading;
+    const selectedError = routeError;
+
+    const displayedDuration = getRouteDurationLabel(
+        selectedMode,
+        routeInfo,
+        routeLoading,
+        transitRoutes
+    );
+    const displayedDistance =
+    displayedRoute?.distance ?? (routeLoading ? 'A calcular...' : '--');
+    const displayedArrival =
+    displayedRoute?.arrivalTime ?? (routeLoading ? 'A calcular...' : '--');
+
     const selectedAttribution = selectedMode === 'transit' ? null : routeInfo?.[selectedMode]?.attribution ?? null;
 
     // Render transport selection buttons
@@ -167,7 +184,12 @@ export default function FullMap({
                             renderTransportButton(
                                 option.mode,
                                 option.icon,
-                                getRouteDurationLabel(option.mode, routeInfo, routeLoading)
+                                getRouteDurationLabel(
+                                    option.mode,
+                                    routeInfo,
+                                    routeLoading,
+                                    transitRoutes
+                                )
                             ),
                         )}
                     </View>
@@ -207,8 +229,8 @@ export default function FullMap({
                     <Text style={styles.routeStatusText}>A calcular percursos...</Text>
                 )}
 
-                {routeError && (
-                    <Text style={styles.routeErrorText}>{routeError}</Text>
+                {selectedError && (
+                    <Text style={styles.routeErrorText}>{selectedError}</Text>
                 )}
 
                 {selectedAttribution && (
