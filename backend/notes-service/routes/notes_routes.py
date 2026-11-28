@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends
 from models.notes_model import Notes
+from pydantic import Field
+
 from fastapi import Depends
 from controllers.notes_controller import notes_controller
 from controllers.auth_controller import authenticate_token
@@ -9,8 +11,7 @@ from pydantic import BaseModel
 # Schema to create/edit (user input)
 class NotesCreate(BaseModel):
     content: str
-    #product_seller_id: int
-    quantity: int
+    title: str = Field(default="Sem título", max_length=100)
 
 # Creates /deliveries endpoint (tag is for Swagger)
 router = APIRouter( prefix = "/notes", tags = ["Notes"])
@@ -21,7 +22,7 @@ async def get_note_by_user(user_id: str, user = Depends(authenticate_token)):
     return await notes_controller.get_one(user_id, user)
 
 
-# POST /notes
+# POST /notes/:id
 @router.post("/{user_id}")
 async def create_note(user_id: str, body: NotesCreate, user = Depends(authenticate_token)):
     return await notes_controller.create_one(user_id, body, user)

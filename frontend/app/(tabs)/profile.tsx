@@ -86,7 +86,7 @@ export default function ProfileScreen() {
   const colorScheme = useColorScheme() ?? "light";
   const brandColors = Colors[colorScheme];
 
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
   const isSeller = user?.role === "seller";
 
   // profile states
@@ -125,6 +125,35 @@ export default function ProfileScreen() {
       setProfileImage(result.assets[0].uri);
     }
   };
+
+  const handleLogout = () => {
+  Alert.alert(
+    "Terminar sessão",
+    "Tens a certeza de que queres terminar sessão?",
+    [
+      {
+        text: "Cancelar",
+        style: "cancel",
+      },
+      {
+        text: "Terminar sessão",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await logout();
+          } catch (err) {
+            console.error("[Auth] Logout failed:", err);
+
+            Alert.alert(
+              "Erro",
+              "Não foi possível terminar a sessão. Tenta novamente!"
+            );
+          }
+        },
+      },
+    ]
+  );
+};
 
   /*
    * load the current user's favourite records whenever the profile
@@ -289,11 +318,13 @@ export default function ProfileScreen() {
           {/* Icon Settings */}
           <TouchableOpacity
             style={styles.topRightIcon}
-            onPress={() => console.log("Settings")}
+            onPress={handleLogout}
+            activeOpacity={0.7}
+            accessibilityLabel="Terminar sessão"
           >
             <Ionicons
-              name="settings-sharp"
-              size={26}
+              name="log-out-outline"
+              size={27}
               color={brandColors.tint}
             />
           </TouchableOpacity>

@@ -1,26 +1,13 @@
 from loguru import logger
 from fastapi import HTTPException
 from models.notes_model import Notes
-from controllers.auth_controller import authenticate_token
-from pydantic import BaseModel
 
+from datetime import datetime, timezone
 
 class NotesController:
-
     # Get notes by user ID 
     async def get_one(self, user_id, user):
         logger.info(f"Request: GET /notes/{user_id} received!")
-
-        # Query
-        note = await Notes.find(Notes.user_id == user_id).to_list()
-        
-
-        # Check 404 error (no notes found)
-        if not note:
-            logger.warning(f'Note with user ID {user_id} was not found')
-            raise HTTPException(
-                status_code = 404, 
-                detail = {"error": f"Note for user with ID {user_id} not found!"})
 
         # Check 403 error (no authorization)
         if user["id"] != user_id and user["role"] != "admin":
@@ -29,9 +16,11 @@ class NotesController:
                 detail = {"error": f"Cannot see the notes from another user!"}
             )
 
-        # 200 OK
-        logger.info(f"Note for user with ID {user_id} returned successfully.")
-        return {f"Note for user {user_id}": note}
+        # Query
+        notes = await Notes.find(Notes.user_id == user_id).to_list()
+
+        logger.info(f"Retrieved {len(notes)} notes for user {user_id}")
+        return {f"notes": notes}
 
 
     # Create a new note
@@ -48,14 +37,14 @@ class NotesController:
         new_note = Notes(
             user_id = user_id,
             content = body.content,
-            #product_seller_id = body.product_seller_id,
-            quantity = body.quantity 
+            title = body.title.strip() or "Sem título"
         )
 
         # Save changes
         await new_note.insert()
 
         logger.info("New note successfully created!")
+
         return{
             "message": "New note created successfully!",
             "note": new_note
@@ -70,10 +59,10 @@ class NotesController:
 
         # Check 404 error (no notes found)
         if not note:
-            logger.warning(f'Note  with ID {note_id} not found!')
             raise HTTPException(
-                status_code = 404, 
-                detail = {"error": f"Note  with ID {note_id} not found!"})
+                status_code=404,
+                detail={"error": f"Note with ID ${note_id} not found!"}
+            )
         
 
         # Check 403 error (no authorization)
@@ -84,9 +73,10 @@ class NotesController:
                 detail = {"error": "Cannot edit the notes from another user!"}
             )
 
-         # Update fields
+        # Update fields
+        note.title = body.title.strip() or "Sem título"
         note.content = body.content
-        note.quantity = body.quantity
+        note.updated_at = datetime.now(timezone.utc)
         #note.product_seller_id = body.product_seller_id
 
         # Save changes

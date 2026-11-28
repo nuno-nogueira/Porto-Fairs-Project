@@ -434,29 +434,6 @@ export default function HomepageScreen() {
         return matchesSearch && matchesCategory;
     });
 
-    // TEMPORARY.
-    const temporary = () => {
-        router.push('/setup');
-    };
-
-    // Logout handler.
-    const handleLogout = async () => {
-        try {
-            await logout();
-
-            Alert.alert(
-                'Logout',
-                'Sessão terminada com sucesso.'
-            );
-
-        } catch (err) {
-            Alert.alert(
-                'Erro',
-                'Não foi possível terminar a sessão. Tente outra vez!'
-            );
-        }
-    };
-
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
             <ThemedView style={styles.container}>
@@ -466,38 +443,6 @@ export default function HomepageScreen() {
                         source={require('../../assets/images/app-logo.png')}
                     />
                 </View>
-
-                {!authLoading && (
-                    <View style={styles.userWelcomeContainer}>
-                        {user ? (
-                            <>
-                                <Text style={styles.welcomeMessage}>
-                                    Olá {user.name}!
-                                </Text>
-
-                                <TouchableOpacity
-                                    style={styles.logoutButton}
-                                    onPress={handleLogout}
-                                >
-                                    <Text style={styles.logoutButtonText}>
-                                        Terminar sessão
-                                    </Text>
-                                </TouchableOpacity>
-                            </>
-                        ) : (
-                            <Text style={styles.welcomeMessage}>
-                                Olá, visitante!
-                            </Text>
-                        )}
-                    </View>
-                )}
-
-                <TouchableOpacity onPress={temporary}>
-                    <Text>
-                        Click Me!
-                    </Text>
-                </TouchableOpacity>
-
                 <View style={styles.searchBar}>
                     <SearchBarComponent
                         value={searchQuery}
