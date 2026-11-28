@@ -53,13 +53,17 @@ The application is split into an **Expo / React Native frontend** and a **micros
 <a id="screenshots"></a>
 ## 🖼️ Screenshots
 
-| Splash Screen | Vendor Profile |
+| Vendor Profile | Notes |
 |:---:|:---:|
-| ![Splash Screen](screenshots/app-splashscreen.png) | ![Vendor Profile](screenshots/vendor-profile.png) |
+| ![Vendor Profile](screenshots/vendor-profile.png) | ![Notes](screenshots/notes.jpg) |
 
-| Fair Information | Route Showcase |
+| Fair Information | Fair Ratings |
 |:---:|:---:|
-| ![Fair Page Information](screenshots/fair-page-info.png) | ![Route Showcase](screenshots/route-showcasing.png) |
+| ![Fair Page Information](screenshots/fair-page-info.png) | ![Fair Ratings](screenshots/fair-ratings.jpg) |
+
+| Planning a Route | Showcasing a Route |
+|:---:|:---:|
+| ![Route_Planning](screenshots/planning-route.jpg) | ![Route Showcase](screenshots/showcasing-route.jpg) |
 
 <a id="tech-stack"></a>
 ## 🧰 Tech Stack
