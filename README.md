@@ -80,7 +80,7 @@ The application is split into an **Expo / React Native frontend** and a **micros
   </tr>
   <tr>
     <td align="center">
-      <img src="screenshots/planning-route.jpg" alt="Route Planning" width="300" />
+      <img src="screenshots/planing-route.jpg" alt="Route Planning" width="300" />
       <br />
       <b>Route Planning</b>
     </td>
