@@ -53,17 +53,44 @@ The application is split into an **Expo / React Native frontend** and a **micros
 <a id="screenshots"></a>
 ## 🖼️ Screenshots
 
-| Vendor Profile | Notes |
-|:---:|:---:|
-| ![Vendor Profile](screenshots/vendor-profile.png) | ![Notes](screenshots/notes.jpg) |
-
-| Fair Information | Fair Ratings |
-|:---:|:---:|
-| ![Fair Page Information](screenshots/fair-page-info.png) | ![Fair Ratings](screenshots/fair-ratings.jpg) |
-
-| Planning a Route | Showcasing a Route |
-|:---:|:---:|
-| ![Route_Planning](screenshots/planning-route.jpg) | ![Route Showcase](screenshots/showcasing-route.jpg) |
+<table>
+  <tr>
+    <td align="center">
+      <img src="screenshots/vendor-profile.png" alt="Vendor Profile" width="300" />
+      <br />
+      <b>Vendor Profile</b>
+    </td>
+    <td align="center">
+      <img src="screenshots/notes.jpg" alt="Notes" width="300" />
+      <br />
+      <b>Notes</b>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="screenshots/fair-page-info.png" alt="Fair Information" width="300" />
+      <br />
+      <b>Fair Information</b>
+    </td>
+    <td align="center">
+      <img src="screenshots/fair-ratings.jpg" alt="Fair Ratings" width="300" />
+      <br />
+      <b>Fair Ratings</b>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="screenshots/planning-route.jpg" alt="Route Planning" width="300" />
+      <br />
+      <b>Route Planning</b>
+    </td>
+    <td align="center">
+      <img src="screenshots/showcasing-route.jpg" alt="Route Showcasing" width="300" />
+      <br />
+      <b>Route Showcasing</b>
+    </td>
+  </tr>
+</table>
 
 <a id="tech-stack"></a>
 ## 🧰 Tech Stack
